@@ -1,0 +1,4 @@
+base: E5sa.yaml
+description: E5sa recipe with inputs VV, VH and HAND
+data:
+  channels: [VV, VH, HAND]

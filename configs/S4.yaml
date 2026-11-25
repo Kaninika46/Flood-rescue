@@ -1,0 +1,7 @@
+# S4: best Level 2 model (S2 or S3) on the hand-labelled Nepal 2024 Maxar tiles.
+base: S3.yaml
+description: S3 models on labelled Nepal 2024 Maxar tile pairs
+data:
+  val_split: nepal_maxar_labelled
+eval:
+  splits: [nepal_maxar_labelled]

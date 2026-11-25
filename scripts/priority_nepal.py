@@ -1,0 +1,171 @@
+"""Exposure and priorities for the Nepal replay (prompts C2, C3). Run in the "flood" env.
+
+    python scripts/priority_nepal.py download   # WorldPop 100 m, local levels, OSM facilities
+    python scripts/priority_nepal.py run        # exposure + ranking + docs/exposure.md
+
+Needs the Level 1 replay outputs (``scripts/nepal_level1.py``) and the road graph
+(``scripts/route_demo.py graph``). Writes ``$DATA_ROOT/nepal/priority/{exposure,priorities}``
+GeoJSON/CSV and ``docs/exposure.md`` (our total vs UNOSAT's about 19,000 exposed people, and why
+they differ).
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import typer
+
+from src.common.config import data_path, load_config, repo_root
+from src.common.logging import get_logger
+
+log = get_logger("priority")
+app = typer.Typer(add_completion=False, help=__doc__)
+
+
+def _cfg() -> dict:
+    return load_config(repo_root() / "configs" / "priority.yaml")
+
+
+@app.command()
+def download() -> None:
+    """Fetch population, local-level boundaries and facilities (needs internet + Overpass)."""
+    import geopandas as gpd
+    import osmnx as ox
+    import pandas as pd
+
+    cfg = _cfg()
+    pop = data_path(cfg["population"]["path"])
+    if not pop.exists():
+        pop.parent.mkdir(parents=True, exist_ok=True)
+        log.info("downloading %s", cfg["population"]["url"])
+        urllib.request.urlretrieve(cfg["population"]["url"], pop)
+    admin = data_path(cfg["admin"]["path"])
+    if not admin.exists():
+        meta = json.load(urllib.request.urlopen(cfg["admin"]["geoboundaries_api"], timeout=60))
+        admin.parent.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(meta["gjDownloadURL"], admin)
+        log.info(
+            "local levels (geoBoundaries ADM3, %s) -> %s",
+            meta.get("boundaryYearRepresented"),
+            admin,
+        )
+    fac = data_path(cfg["facilities"]["path"])
+    if not fac.exists():
+        west, south, east, north = cfg["analysis_bbox"]
+        frames = [
+            ox.features_from_bbox((west, south, east, north), tags)
+            for tags in ({"amenity": ["hospital", "clinic"]}, {"place": ["city", "town"]})
+        ]
+        gdf = gpd.GeoDataFrame(pd.concat(frames), crs="EPSG:4326").reset_index()
+        keep = [c for c in ("name", "amenity", "place") if c in gdf]
+        fac.parent.mkdir(parents=True, exist_ok=True)
+        gdf[[*keep, "geometry"]].to_file(fac, driver="GeoJSON")
+        log.info("%d facilities -> %s", len(gdf), fac)
+
+
+@app.command()
+def run() -> None:
+    """Exposure per area, ranked priorities and the exposure report."""
+    import geopandas as gpd
+    from shapely.geometry import box
+
+    from src.priority.exposure import exposure_by_area
+    from src.priority.rank import rank_areas
+    from src.routing.graph import load_graph
+    from src.routing.route import load_vehicles
+    from src.routing.status import StatusSettings, assign_status
+
+    cfg = _cfg()
+    rcfg = load_config(repo_root() / "configs" / "routing.yaml")
+    out = data_path(cfg["outputs"])
+    out.mkdir(parents=True, exist_ok=True)
+    areas = gpd.read_file(data_path(cfg["admin"]["path"]))
+    areas = areas[areas.intersects(box(*cfg["analysis_bbox"]))]
+    exposure = exposure_by_area(
+        data_path(cfg["flood_mask"]),
+        data_path(cfg["population"]["path"]),
+        areas,
+        cfg["admin"]["name_field"],
+        cfg["threshold"],
+        cfg["method"],
+    )
+    exposure.to_file(out / "exposure.geojson", driver="GeoJSON")
+    G = load_graph(data_path(rcfg["graph"]["path"]))
+    inputs = {k: data_path(v) for k, v in rcfg["inputs"].items()}
+    assign_status(
+        G,
+        depth=inputs["depth"] if inputs["depth"].exists() else None,
+        std=inputs["std"] if inputs["std"].exists() else None,
+        settings=StatusSettings(**rcfg["status"]),
+    )
+    facilities = gpd.read_file(data_path(cfg["facilities"]["path"]))
+    ranked = rank_areas(
+        exposure,
+        G,
+        [(g.centroid.x, g.centroid.y) for g in facilities.geometry],
+        load_vehicles(),
+        data_path(cfg["std"]),
+        cfg["vehicle"],
+        cfg["verify_below"],
+    )
+    ranked.to_file(out / "priorities.geojson", driver="GeoJSON")
+    ranked.drop(columns="geometry").to_csv(out / "priorities.csv", index=False)
+    write_report(exposure, ranked, cfg)
+
+
+def write_report(exposure: object, ranked: object, cfg: dict) -> None:
+    """docs/exposure.md with totals, the top 10 and the reasons for differences."""
+    total = float(exposure["exposed_people"].sum())
+    flooded = float(exposure["flooded_km2"].sum())
+    ref = cfg["unosat_exposed_reference"]
+    top = ranked.head(10)
+    lines = [
+        "# Exposure, Koshi floods 27 September 2024",
+        "",
+        "Generated by `python scripts/priority_nepal.py run` "
+        f"(method `{cfg['method']}`, flood threshold {cfg['threshold']}).",
+        "",
+        f"- Flooded area inside the analysed local levels: **{flooded:.1f} km^2**",
+        f"- Exposed people (our estimate): **{total:,.0f}**",
+        f"- UNOSAT estimate: about **{ref:,}** ({total / ref:.0%} of it)",
+        "",
+        "## Why the numbers differ",
+        "",
+        "- **Population layer.** We use WorldPop 100 m constrained (people placed only in mapped "
+        "buildings); UNOSAT products often use another layer or year.",
+        "- **Flood extent.** Our map is the U-Net ensemble without permanent water; UNOSAT draws "
+        "its extent from its own satellite analysis, possibly from a different time of day.",
+        "- **Counting rule.** A 100 m cell counts as flooded only when at least half of it is "
+        "flooded (`majority`); `fraction` counts partial cells proportionally.",
+        "- **Area.** Only local levels inside `analysis_bbox` are counted.",
+        "- **Radar limits.** Flooded settlements (buildings, trees) are often missed by C-band "
+        "radar, which lowers our count where people actually live.",
+        "",
+        "## Top 10 priorities (check against UNOSAT and ACAPS reports)",
+        "",
+        "| Priority | Area | Cut off | Exposed people | Flooded km^2 | Confidence | Verify |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for r in top.itertuples():
+        lines.append(
+            f"| {r.priority} | {r.area_name} | {'yes' if r.cut_off else 'no'} | "
+            f"{r.exposed_people:,.0f} | {r.flooded_km2:.2f} | {r.mean_confidence} | "
+            f"{'yes' if r.verify else ''} |"
+        )
+    lines += [
+        "",
+        "Places UNOSAT and ACAPS reported as worst hit: fill in after reading their "
+        "September 2024 situation reports, and mark which appear in the top 10.",
+        "",
+    ]
+    (repo_root() / "docs" / "exposure.md").write_text("\n".join(lines), encoding="utf-8")
+    log.info("wrote docs/exposure.md: %.0f exposed people, %.1f km^2", total, flooded)
+
+
+if __name__ == "__main__":
+    app()

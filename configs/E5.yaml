@@ -1,0 +1,14 @@
+# E5: E4 + pseudo-labels on the weakly labelled chips from the E4 ensemble (seeds 0-2).
+base: E4.yaml
+description: E4 recipe trained on hand labels + confident pseudo-labels of the weak chips
+pseudo_label:                # used by `python -m src.level1_radar.pseudo_label --config ...`
+  from_experiment: E4
+  seeds: [0, 1, 2]
+  high: 0.9                  # mean probability above -> water
+  low: 0.1                   # mean probability below -> not water
+  require_agreement: true    # and every member on the same side of 0.5
+data:
+  pseudo:
+    split: s11_weak
+    dir: pseudo/E4           # relative to $DATA_ROOT
+    exclude_events: [Bolivia]  # Bolivia is a test event: never train on its imagery

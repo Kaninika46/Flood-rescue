@@ -1,0 +1,28 @@
+# Exposure and priority (src/priority). Paths are under $DATA_ROOT.
+experiment: priority
+population:
+  # WorldPop Nepal, 100 m, constrained. Check the current file name on https://hub.worldpop.org
+  # (Nepal, "Constrained individual countries") and update this URL if it moved.
+  url: https://data.worldpop.org/GIS/Population/Global_2000_2020_Constrained/2020/BSGM/NPL/npl_ppp_2020_constrained.tif
+  path: nepal/worldpop/npl_ppp_2020_constrained.tif
+admin:
+  # Lowest level available: wards if you have a ward file (put it at `path`), otherwise
+  # municipalities (local levels) from geoBoundaries ADM3, fetched through its API.
+  path: nepal/admin/npl_local_levels.geojson
+  geoboundaries_api: https://www.geoboundaries.org/api/current/gbOpen/NPL/ADM3/
+  name_field: shapeName
+facilities:
+  path: nepal/osm/facilities.geojson    # OSM amenity=hospital|clinic + place=city|town
+flood_mask: nepal/level1/S1_20240927_model_mask.tif
+std: nepal/level1/S1_20240927_flood_std.tif
+threshold: 0.5
+method: majority            # or fraction (see src/priority/exposure.py)
+vehicle: car
+verify_below: 0.6
+analysis_bbox: [86.9, 26.35, 87.35, 26.85]   # keep in step with configs/routing.yaml graph.bbox
+unosat_exposed_reference: 19000              # UNOSAT estimate for 27 Sept 2024
+outputs: nepal/priority
+alert:
+  river: Koshi
+  district: Sunsari and Saptari
+  shelter: the nearest school or health post on high ground

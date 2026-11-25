@@ -1,0 +1,78 @@
+# Conda environment "flood": Level 1 radar, depth, routing, priority, alerts and backend.
+# Level 2 (SpaceNet 8) uses its own env "sn8" (environment-sn8.yml); never mix the two.
+#
+#   conda env create -f environment.yml        # first time
+#   conda env update -f environment.yml --prune  # after someone changes this file
+#
+# Everything comes from conda-forge, including the CUDA build of PyTorch, so GDAL is
+# never installed with pip. You need the NVIDIA driver (on WSL2: the Windows driver),
+# not a separate CUDA toolkit. If the solver says "nothing provides __cuda", run:
+#   CONDA_OVERRIDE_CUDA=12.9 conda env create -f environment.yml
+#
+# Versions are pinned to major.minor so all four laptops get the same numbers.
+# Change a pin only in this file, in a PR that says why.
+name: flood
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - pip
+
+  # Deep learning (CUDA 12.9 build; supports RTX 20xx to RTX 50xx laptop GPUs)
+  - pytorch-gpu=2.13
+  - pytorch=2.13
+  - torchvision=0.28
+  - cuda-version=12.9
+  - segmentation-models-pytorch=0.6
+  - albumentations=2.0
+  # simsimd 7 is an empty package renamed to "numkong", but albucore (used by
+  # albumentations) still does `import simsimd`. Keep 6.x until albucore catches up.
+  - simsimd=6
+
+  # Geospatial
+  - gdal=3.12
+  - rasterio=1.4
+  - geopandas=1.2
+  - pyproj=3.7
+  - shapely=2.2
+  - osmnx=2.1
+  - networkx=3.6
+  - pystac=1.16
+
+  # Numerics and classical ML
+  - numpy=2.4
+  - pandas=3.1
+  - scipy=1.17
+  - scikit-learn=1.9
+  - scikit-image=0.26
+  - lightgbm=4.7
+  - matplotlib=3.11
+  - tqdm
+
+  # Data download (S3 buckets, Sen1Floods11 bucket, Earth Engine for the Nepal scenes)
+  - boto3
+  - awscli=2
+  - gsutil=5
+  - earthengine-api=1
+
+  # Alerts (CAP 1.2 XML + schema validation) and backend (FastAPI + PostGIS + RQ)
+  - lxml=6
+  - fastapi=0
+  - uvicorn
+  - httpx
+  - sqlalchemy=2
+  - geoalchemy2
+  - psycopg
+  - rq
+  - redis-py
+
+  # Experiment tracking (W&B online, MLflow ./mlruns offline)
+  - wandb=0.30
+  - mlflow=3
+
+  # Tooling
+  - typer=0.29
+  - pyyaml=6
+  - pytest=9
+  - ruff=0.17

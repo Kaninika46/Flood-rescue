@@ -1,0 +1,20 @@
+# E2: per-pixel random forest on engineered features (VV, VH, VV-VH, HAND, slope, 5x5 mean/std).
+experiment: E2
+method: random_forest
+description: Random forest, balanced pixel sample from s11_train, tuned on s11_val
+seeds: [0, 1, 2]
+data:
+  train_split: s11_train
+  val_split: s11_val
+eval:
+  splits: [s11_test, s11_bolivia]
+rf:
+  per_class_per_chip: 1000      # balanced training pixels per class per chip
+  val_pixels_per_chip: 10000    # random val pixels per chip used for tuning (pooled IoU)
+  base:
+    n_estimators: 100
+    max_features: sqrt
+  grid:                          # every combination is tried; best val IoU wins
+    max_depth: [12, 20, null]
+    min_samples_leaf: [5, 20]
+  thresholds: [0.5, 0.6, 0.7, 0.8, 0.9]   # decision cut tuned on validation pixels

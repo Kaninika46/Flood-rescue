@@ -1,0 +1,16 @@
+# E7: stacking fusion of E1 (Otsu), E2 (random forest) and E6 (U-Net mean and std) plus HAND.
+experiment: E7
+method: fusion
+description: Logistic regression vs LightGBM on Otsu, RF prob, U-Net mean/std, HAND; trained on s11_val
+seeds: [0, 1, 2]
+fusion:
+  train_split: s11_val
+  val_pixels_per_chip: 5000
+  components:
+    otsu: {config: configs/E1.yaml, variant: vh_event_terrain}
+    rf: {config: configs/E2.yaml}          # the forest of the same seed
+    unet: {config: configs/E6.yaml}        # ensemble of all E6 seeds: mean and std
+  models: [logistic, lightgbm]
+  lightgbm: {n_estimators: 300, learning_rate: 0.05, num_leaves: 31, min_child_samples: 50}
+eval:
+  splits: [s11_test, s11_bolivia]

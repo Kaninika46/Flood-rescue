@@ -1,0 +1,21 @@
+# Safe-route engine settings (src/routing). Vehicle limits live in config/vehicles.yaml.
+experiment: routing
+graph:
+  bbox: [86.9, 26.35, 87.35, 26.85]   # west, south, east, north: Sunsari / Morang / Saptari plains
+  network_type: drive
+  path: nepal/osm/koshi_drive.graphml # under $DATA_ROOT
+status:                               # src/routing/status.py StatusSettings
+  sample_step_m: 10.0
+  max_std: 0.2                        # ensemble std above this -> "verify"
+  level2_buffer_m: 10.0
+  level2_min_overlap: 0.5
+  flood_zone_m: 50.0
+  outside_coverage: verify
+inputs:                               # under $DATA_ROOT; missing files are skipped
+  depth: nepal/level1/S1_20240927_depth.tif
+  std: nepal/level1/S1_20240927_flood_std.tif
+  level2_status: eval/S3/nepal_maxar_labelled/road_status.geojson
+demo:
+  start: [87.2718, 26.4525]           # Biratnagar
+  end: [87.1500, 26.6000]             # Inaruwa
+  vehicles: [car, truck, foot]

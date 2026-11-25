@@ -1,0 +1,15 @@
+# E0: released ETCI 2021 ensemble on the ETCI validation tiles (reproduction of Paul and Ganju 2021).
+experiment: E0
+method: etci
+description: ETCI U-Net + U-Net++ + round-2 pseudo-label U-Net, D4 test-time augmentation, no CRF
+seeds: [0]
+etci:
+  weights_dir: weights/etci            # relative to $DATA_ROOT (etci_reproduce download-weights)
+  tta: true
+  members:
+    - {arch: unet, file: unet_mobilenet_v2_0.pth}
+    - {arch: unetplusplus, file: upp_mobilenetv2_0.pth}
+    - {arch: unet, file: unet_pseudo_mobilenetv2_round2_0.pth}
+eval:
+  splits: [etci_validation]
+  skip_blank: true                     # ETCI's own filter_df rule: VV only 0/255 = no data

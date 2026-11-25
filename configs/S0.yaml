@@ -1,0 +1,29 @@
+# S0: SpaceNet 8 baseline (foundation + flood networks), the baseline's random 85/15 tile split.
+experiment: S0
+description: SN8 baseline ResNet-34 foundation + Siamese ResNet-34 flood network, 85/15 split
+seeds: [0]
+data:
+  train_split: sn8_train
+  val_split: sn8_val
+  crop: 512                 # random training crops of the 1300 px tiles (6 GB GPU)
+  val_crop: null            # validate on full tiles
+model:
+  pretrained: true          # ImageNet ResNet-34 encoder, as the baseline
+  init_weights: null        # S2: {foundation: <path under DATA_ROOT>}
+train:
+  epochs: 50                # baseline: 50
+  batch_size: 2             # baseline: 2 (full tiles); crops leave room, keep 2 for parity
+  accum_steps: 2            # effective batch 4
+  lr: 1.0e-4                # baseline: 1e-4, Adam
+  lr_step: 40               # baseline: StepLR(40, 0.5)
+  lr_gamma: 0.5
+  amp: true
+  num_workers: 4
+  loss:                     # baseline foundation loss weights
+    focal_weight: 0.75
+    dice_weight: 0.25
+    road_weight: 0.5
+    building_weight: 0.5
+eval:
+  splits: [sn8_val]
+  flood_threshold_classes: [2, 4]

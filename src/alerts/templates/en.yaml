@@ -1,0 +1,11 @@
+# English alert texts. Placeholders: {river} {district} {shelter} {depth_m} {valid_until}
+language: en-US
+event: Flood warning
+headline: "Flood warning: {river} rising in {district}. Move to {shelter} now."
+description: >-
+  Satellite radar shows flooding in {district} along the {river}. Water up to about {depth_m} m
+  deep is estimated in low-lying areas. Roads in the flooded area may be cut.
+instruction: >-
+  Move to {shelter} now. Take water, medicine and documents. Do not walk or drive through
+  flowing water. Follow instructions from local officials.
+sms: "EXERCISE - Flood warning: {river} rising in {district}. Move to {shelter} now. Avoid flood water."

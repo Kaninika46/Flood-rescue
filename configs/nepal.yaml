@@ -1,0 +1,46 @@
+# Nepal replay: Koshi floods, 27 September 2024 (Koshi and Madhesh provinces).
+experiment: nepal
+aoi:
+  # Province boundaries from geoBoundaries ADM1 on Earth Engine; names tried in order.
+  gee_collection: WM/geoLab/geoBoundaries/600/ADM1
+  country_iso: NPL
+  # geoBoundaries 6.0.0 on GEE still uses the pre-2023 names "Province 1" (Koshi) and
+  # "Province 2" (Madhesh) (checked November 2026); the newer names are kept for later releases.
+  names: [Province 1, Province 2, Koshi, Koshi Province, Madhesh, Madhesh Province]
+  # Fallback if the names are not found (lon/lat): covers both provinces.
+  bbox: [84.6, 26.3, 88.25, 28.2]
+  # The province outline is intersected with this box (lon/lat): the Terai plains, where the
+  # 27 Sep 2024 Koshi flooding was. Set to null to keep the whole provinces.
+  clip_bbox: [84.6, 26.3, 88.25, 27.05]
+  # Or a local polygon file (relative to $DATA_ROOT); used first when it exists.
+  file: nepal/aoi_koshi_madhesh.geojson
+gee:
+  project: null            # your Google Cloud project id with Earth Engine enabled (or env EE_PROJECT)
+  drive_folder: flood-rescue-nepal
+  scale_m: 10
+  crs: EPSG:4326           # same as Sen1Floods11 chips
+dates:
+  post: ["2024-09-27", "2024-10-01"]
+  pre_window: ["2024-09-01", "2024-09-20"]   # early September, same relative orbit as post
+paths:                      # all relative to $DATA_ROOT
+  s1_dir: nepal/s1          # S1_<post>.tif + S1_<post>_pre.tif (VV, VH in dB) after mosaic
+  jrc: nepal/s1/JRC_occurrence.tif
+  terrain_dir: nepal/terrain
+  level1_dir: nepal/level1
+  unosat_dir: nepal/unosat  # UNOSAT flood extent polygons for 27 Sep 2024 (download by hand)
+model:
+  config: configs/E6ens.yaml   # the Level 1 ensemble used for the replay
+  threshold: 0.5
+permanent_water_occurrence: 50   # JRC occurrence (%) above which water is "normal", not flood
+change_otsu:
+  min_drop_db: 3.0
+  max_hand_m: 15.0
+depth:
+  resolution_m: 30
+maxar:
+  # Maxar Open Data "Nepal-Floods-Sept-2024" has post-event imagery (GeoEye-1, 2024-10-06) only over
+  # the Kathmandu Valley (Bagmati floods of 27-28 Sept 2024, same storm); its Koshi-area images are
+  # all pre-event (checked with scripts/maxar_nepal.py list, November 2026). Level 2 (S4) is
+  # therefore tested on Kathmandu Valley tile pairs; Level 1 stays on Koshi/Madhesh.
+  area_bbox: [85.25, 27.55, 85.55, 27.80]
+  post_after: "2024-09-27"

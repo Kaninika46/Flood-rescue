@@ -1,0 +1,16 @@
+# E3: the ETCI round-2 U-Net (best single released model) on Sen1Floods11, no retraining.
+# Sen1Floods11 is in dB; ETCI inputs were 8-bit PNG renderings. configs/etci_scaling.yaml holds the
+# dB -> [0, 1] mapping fitted by `python -m src.level1_radar.etci_reproduce fit-scaling`.
+experiment: E3
+method: etci
+description: ETCI round-2 U-Net on Sen1Floods11 with the fitted dB -> PNG mapping, D4 TTA
+seeds: [0]
+etci:
+  weights_dir: weights/etci
+  tta: true
+  scaling: configs/etci_scaling.yaml
+  members:
+    - {arch: unet, file: unet_pseudo_mobilenetv2_round2_0.pth}
+eval:
+  splits: [s11_test, s11_bolivia, s11_southasia_holdout_test]
+  skip_blank: false

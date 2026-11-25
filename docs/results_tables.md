@@ -1,0 +1,27 @@
+# Results tables
+
+Built by `scripts/make_report_tables.py --source files`. Mean ± standard deviation over seeds; one number when there is one seed; n/a when not run yet.
+
+## Level 1: radar flood map (Sen1Floods11; flood-class IoU, TP/FP/FN summed per split)
+
+| Experiment | What | Variant | IoU test | IoU Bolivia | IoU South Asia | F1 test | Precision test | Recall test | Seeds |
+|---|---|---|---|---|---|---|---|---|---|
+| E1 | Otsu threshold | shipped | 0.546 | 0.697 | 0.430 | 0.706 | 0.681 | 0.733 | 1 |
+| E1 | Otsu threshold | vh | 0.230 | 0.403 | 0.208 | 0.374 | 0.253 | 0.714 | 1 |
+| E1 | Otsu threshold | vh_capped | 0.296 | 0.577 | 0.288 | 0.456 | 0.338 | 0.705 | 1 |
+| E1 | Otsu threshold | vh_event | 0.429 | 0.643 | 0.368 | 0.600 | 0.489 | 0.777 | 1 |
+| E1 | Otsu threshold | vh_event_terrain | 0.444 | 0.644 | 0.386 | 0.615 | 0.511 | 0.773 | 1 |
+| E1 | Otsu threshold | vh_terrain | 0.311 | 0.578 | 0.309 | 0.474 | 0.358 | 0.700 | 1 |
+| E1 | Otsu threshold | vv | 0.210 | 0.349 | 0.183 | 0.347 | 0.230 | 0.713 | 1 |
+| E1 | Otsu threshold | vv_event | 0.319 | 0.607 | 0.272 | 0.483 | 0.362 | 0.724 | 1 |
+| E2 | Random forest |  | 0.635 ± 0.000 | 0.622 ± 0.003 | n/a | 0.776 ± 0.000 | 0.825 ± 0.002 | 0.733 ± 0.002 | 3 |
+| E2sa | Random forest (South Asia hold-out training) |  | n/a | n/a | 0.546 ± 0.000 | n/a | n/a | n/a | 3 |
+| E3 | ETCI U-Net, no retraining |  | 0.607 | 0.672 | 0.512 | 0.756 | 0.729 | 0.785 | 1 |
+
+## Level 2: road-level flood map (SpaceNet 8 scoring)
+
+_No results yet._
+
+## System (Koshi replay)
+
+_No results yet._

@@ -1,0 +1,115 @@
+# --- Data: never committed. Real location is $DATA_ROOT. ---
+/data/
+*.tif
+*.tiff
+*.TIF
+*.vrt
+*.nc
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.zarr/
+*.gpkg
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.mbtiles
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.geojson
+*.graphml
+*.gpickle
+*.parquet
+*.aux.xml
+
+# --- Model checkpoints and weights ---
+checkpoints/
+weights/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.joblib
+*.pkl
+*.lgb
+
+# --- Experiment tracking ---
+mlruns/
+mlartifacts/
+wandb/
+outputs/
+runs/
+
+# --- Secrets and personal settings (API keys, phone numbers) ---
+.env
+.env.*
+!.env.example
+config/test_recipients.yaml
+*.pem
+*.key
+.netrc
+credentials.json
+service-account*.json
+client_secret*.json
+.git-credentials
+**/earthengine/credentials
+
+# --- AI assistant files (kept locally, not part of the repository) ---
+CLAUDE.md
+docs/CLAUDE_CODE_PROMPTS.md
+
+# --- Logs ---
+*.log
+nohup.out
+
+# --- Conda / pip / browser download leftovers ---
+condaenv.*.requirements.txt
+*.part
+*.crdownload
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# --- Dashboard (React) ---
+node_modules/
+dashboard/dist/
+dashboard/.vite/
+
+# --- Rescuer app (Flutter) ---
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/android/local.properties
+app/android/key.properties
+*.jks
+*.keystore
+
+# --- Editors and OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+*:Zone.Identifier

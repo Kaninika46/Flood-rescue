@@ -1,0 +1,23 @@
+# Vehicle profiles for src/routing/route.py. Depth limits in metres of water a vehicle may cross.
+# Speeds: car/truck use OSM speeds (osmnx), scaled by speed_factor; foot uses speed_kph.
+foot:
+  max_depth_m: 0.15
+  speed_kph: 4.5
+  network: walk
+car:
+  max_depth_m: 0.15
+  speed_factor: 1.0
+  network: drive
+truck:
+  max_depth_m: 0.30
+  speed_factor: 0.8
+  network: drive
+boat:
+  # handled separately: a boat may only use flooded edges at least this deep (water routing)
+  min_depth_m: 0.5
+  speed_kph: 8.0
+  network: drive
+# Routing rules shared by all vehicles
+rules:
+  verify_penalty: 3.0          # length/time multiplier for "verify" and "unknown" edges
+  close_bridges_in_flood_zone: true

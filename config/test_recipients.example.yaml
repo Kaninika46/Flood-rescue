@@ -1,0 +1,6 @@
+# Copy to config/test_recipients.yaml (git-ignored) and list ONLY your own test phones.
+# src/alerts/gateway.py refuses every number that is not listed in that file.
+# Use E.164 format with the country code, e.g. "+977" followed by the number.
+recipients:
+  - name: my-test-phone
+    number: "+977XXXXXXXXXX"   # replace with your own phone number; never commit the real file

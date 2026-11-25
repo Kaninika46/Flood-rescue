@@ -1,0 +1,6 @@
+# Ensemble member 5 of A8: E6 recipe with a ResNet-34 encoder (ImageNet start, not ETCI weights).
+base: E6.yaml
+description: E6 recipe, ResNet-34 encoder initialised from ImageNet
+model:
+  encoder: resnet34
+  init: imagenet

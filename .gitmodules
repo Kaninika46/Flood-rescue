@@ -1,0 +1,9 @@
+[submodule "third_party/etci2021"]
+	path = third_party/etci2021
+	url = https://github.com/sidgan/ETCI-2021-Competition-on-Flood-Detection
+[submodule "third_party/spacenet8"]
+	path = third_party/spacenet8
+	url = https://github.com/SpaceNetChallenge/SpaceNet8
+[submodule "third_party/fwdet"]
+	path = third_party/fwdet
+	url = https://github.com/csdms-contrib/fwdet

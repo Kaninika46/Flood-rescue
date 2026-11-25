@@ -1,0 +1,40 @@
+# E1: Otsu threshold baselines on Sen1Floods11 (no training, no randomness -> one "seed").
+experiment: E1
+method: otsu
+description: Otsu on VH per chip; shipped Sen1Floods11 Otsu labels; with HAND/slope exclusion
+seeds: [0]
+eval:
+  splits: [s11_test, s11_bolivia, s11_southasia_holdout_test]
+variants:
+  shipped:          # Otsu labels that come with Sen1Floods11 (S1OtsuLabelHand)
+    source: shipped
+  vh:               # our Otsu on VH, threshold per chip
+    source: computed
+    band: VH
+  vh_capped:        # same, threshold capped so water-free chips are not split in two
+    source: computed
+    band: VH
+    max_threshold_db: -18.0
+  vh_terrain:       # capped + HAND > 15 m and slope > 10 degrees excluded
+    source: computed
+    band: VH
+    max_threshold_db: -18.0
+    max_hand_m: 15.0
+    max_slope_deg: 10.0
+  vv:               # Otsu on VV per chip
+    source: computed
+    band: VV
+  vh_event:         # one threshold per flood event (pooled image values, no labels)
+    source: computed
+    band: VH
+    threshold_scope: event
+  vv_event:
+    source: computed
+    band: VV
+    threshold_scope: event
+  vh_event_terrain: # event threshold + HAND > 15 m and slope > 10 degrees excluded
+    source: computed
+    band: VH
+    threshold_scope: event
+    max_hand_m: 15.0
+    max_slope_deg: 10.0

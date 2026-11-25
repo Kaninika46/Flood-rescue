@@ -1,0 +1,11 @@
+# S3: S2 + cloud/haze mask on post images + 3 flood-network members ("verify" where they disagree).
+base: S2.yaml
+description: S2 + cloud mask (unknown) + 3-member flood ensemble (verify on disagreement)
+seeds: [0, 1, 2]
+cloud:
+  brightness_min: 170       # mean RGB above this ...
+  texture_max: 6.0          # ... and local std below this = cloud/haze
+  window: 15                # pixels, local std window
+  min_fraction: 0.5         # a road segment is "unknown" if this share of it is under cloud
+ensemble:
+  verify_disagreement: 0.34 # share of members that must disagree before "verify"

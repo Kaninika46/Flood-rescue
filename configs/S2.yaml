@@ -1,0 +1,6 @@
+# S2: S0 + foundation encoder initialised from SpaceNet 5 road weights (see docs/S2_notes.md).
+base: S0.yaml
+description: S0 with the foundation network initialised from SpaceNet 5 baseline (CRESI, XD_XD-style ResNet-34 U-Net) road weights
+model:
+  init_weights:
+    foundation: weights/sn5/sn5_xdxd_resnet34_converted.pth   # scripts/prepare_sn5_weights.py

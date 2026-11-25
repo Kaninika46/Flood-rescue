@@ -1,0 +1,56 @@
+# Conda environment "sn8": Level 2 (SpaceNet 8 baseline) ONLY. Never mix with "flood".
+#
+#   conda env create -f environment-sn8.yml
+#
+# The SpaceNet 8 baseline was built for nvcr.io/nvidia/pytorch:22.03 (Python 3.8, CUDA 11.6) with
+# pygdal 3.0.4, Shapely 1.8.2, Fiona 1.8.21, geopandas 0.10.2, osmnx 1.1.2, scikit-image 0.19.2
+# (third_party/spacenet8/baseline/docker). The baseline's road post-processing (wkt_to_G) does
+# NOT run with osmnx 1.1.2 (project_graph drops edge geometry), so we use the versions the
+# 3rd-place team actually ran it and APLS with (03-sianalytics/code/requirements.txt):
+# osmnx 0.12.1, geopandas 0.10.2, Shapely 1.8, plus pandas 1.4 of that time. The other packages
+# are the newest conda-forge builds that solve with these (GDAL 3.6, Fiona 1.9, OpenCV 4.7).
+# Checked end to end on SpaceNet 8 tiles: create_masks -> vectorize_roads -> wkt_to_G ->
+# infer_speed -> create_submission -> building_postprocessing -> APLS.
+#
+# PyTorch comes from PyTorch's own pip wheels (CUDA 12.8 bundled; RTX 20xx to 50xx). conda-forge's
+# PyTorch builds need newer system libraries than this 2023-era geospatial stack allows. GDAL
+# still comes from conda-forge, never pip.
+name: sn8
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10
+  - pip
+  # geospatial
+  - gdal=3.6
+  - shapely=1.8
+  - fiona=1.9
+  - geopandas=0.10.2
+  - osmnx=0.12.1
+  - networkx=2.8
+  - pyproj
+  - rasterio=1.3
+  - rtree
+  - utm=0.7
+  - geojson=2.5
+  # numerics and images
+  - numpy=1.23
+  - pandas=1.4
+  - scipy
+  - scikit-image=0.19
+  - statsmodels
+  - numba
+  - opencv=4.7
+  - matplotlib
+  - tqdm
+  # project tooling (src/common)
+  - pyyaml
+  - typer
+  - wandb
+  - mlflow-skinny
+  - pytest
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu128
+      - torch==2.7.1
+      - torchvision==0.22.1

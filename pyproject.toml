@@ -1,0 +1,56 @@
+[project]
+name = "flood-rescue"
+version = "0.1.0"
+description = "Flood Rescue AI: radar and road-level flood maps, water depth, safe routes, priorities and alert drafts."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+# Dependencies live in environment.yml (conda env "flood"); this file only configures tools.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    "third_party",
+    "data",
+    "mlruns",
+    "wandb",
+    "dashboard",
+    "app",
+    "src/level2_roads/sn8",  # verbatim copies of SpaceNet 8 code (Apache-2.0), kept unformatted
+    "src/level2_roads/apls",  # adapted copy of the SpaceNet 8 APLS code, kept unformatted
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # import sorting
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "SIM", # simplify
+    "NPY", # NumPy-specific rules
+    "PTH", # use pathlib
+    "RUF", # ruff-specific rules
+]
+ignore = [
+    "B008", # typer.Option(...) in argument defaults is the typer idiom
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "gpu: needs a CUDA GPU (never used in the default test run)",
+]
+filterwarnings = [
+    "error::RuntimeWarning:src.*",
+    "ignore:.*noload.*:DeprecationWarning",  # inside MLflow's SQLAlchemy store, not our code
+]

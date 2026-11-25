@@ -1,0 +1,7 @@
+# E4 without India, Pakistan and Sri Lanka in training; tested on them (South Asia hold-out).
+base: E4.yaml
+data:
+  train_split: s11_southasia_holdout_train
+  val_split: s11_southasia_holdout_val
+eval:
+  splits: [s11_southasia_holdout_test]

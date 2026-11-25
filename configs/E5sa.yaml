@@ -1,0 +1,11 @@
+base: E5.yaml
+pseudo_label:
+  from_experiment: E4sa
+data:
+  train_split: s11_southasia_holdout_train
+  val_split: s11_southasia_holdout_val
+  pseudo:
+    dir: pseudo/E4sa
+    exclude_events: [Bolivia, India, Pakistan, Sri-Lanka]
+eval:
+  splits: [s11_southasia_holdout_test]

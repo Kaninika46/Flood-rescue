@@ -1,0 +1,16 @@
+computed_on: s11_train
+units:
+  VV: dB
+  VH: dB
+  HAND: m
+  SLOPE: degrees
+mean:
+  VV: -10.3929
+  VH: -17.2411
+  HAND: 7.0495
+  SLOPE: 3.3211
+std:
+  VV: 4.0388
+  VH: 4.754
+  HAND: 21.8942
+  SLOPE: 5.4293

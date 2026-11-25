@@ -1,0 +1,10 @@
+# A8: the 5-member E6 ensemble (seeds 0-3 + one ResNet-34 member) scored as one model,
+# with the mean probability and the across-member std (confidence map).
+base: E6.yaml
+description: 5-member E6 ensemble (4 MobileNetV2 seeds + 1 ResNet-34), mean probability
+seeds: [0]
+ensemble:
+  members: [E6-s0, E6-s1, E6-s2, E6-s3, E6r34-s0]
+eval:
+  splits: [s11_test, s11_bolivia]
+  ensemble: true

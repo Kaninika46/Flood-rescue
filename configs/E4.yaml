@@ -1,0 +1,35 @@
+# E4: fine-tune the ETCI round-2 U-Net on Sen1Floods11 hand labels, inputs VV + VH in dB.
+experiment: E4
+method: unet
+description: ETCI U-Net (MobileNetV2) fine-tuned on s11_train hand labels, VV+VH standardised dB
+seeds: [0, 1, 2]
+data:
+  train_split: s11_train
+  val_split: s11_val
+  channels: [VV, VH]
+  norm: configs/s11_norm.yaml
+  crop: 256
+  crops_per_chip: 4          # each chip gives 4 random crops per epoch
+  pseudo: null
+model:
+  arch: unet
+  encoder: mobilenet_v2
+  init: etci                 # first conv: VV, VH filters kept; head: 2-class softmax -> 1 logit
+  etci_weights: weights/etci/unet_pseudo_mobilenetv2_round2_0.pth
+train:
+  epochs: 60
+  batch_size: 8
+  accum_steps: 2             # effective batch 16: keep batch_size x accum_steps = 16
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  warmup_epochs: 1
+  min_lr_ratio: 0.01
+  patience: 10
+  amp: true
+  num_workers: 4
+  threshold: 0.5
+  loss: {dice: 1.0, focal: 1.0, focal_gamma: 2.0, focal_alpha: 0.25}
+eval:
+  splits: [s11_test, s11_bolivia]
+  ensemble: false            # score each seed on its own (mean and std over seeds)
+  tta: false

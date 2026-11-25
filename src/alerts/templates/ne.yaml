@@ -1,0 +1,12 @@
+# Nepali alert texts (Devanagari). Placeholders as in en.yaml.
+# Have a native speaker check these texts before any exercise with people outside the team.
+language: ne-NP
+event: बाढी चेतावनी
+headline: "बाढी चेतावनी: {district}मा {river} बढ्दैछ। अहिले नै {shelter}मा जानुहोस्।"
+description: >-
+  भू-उपग्रह रडारले {district}मा {river} नजिक बाढी देखाएको छ। होचो ठाउँमा करिब {depth_m}
+  मिटरसम्म पानी हुन सक्छ। बाढी आएको क्षेत्रका सडकहरू बन्द हुन सक्छन्।
+instruction: >-
+  अहिले नै {shelter}मा जानुहोस्। पानी, औषधि र कागजपत्र साथमा लिनुहोस्। बगिरहेको पानीमा
+  हिँड्ने वा गाडी नचलाउनुहोस्। स्थानीय अधिकारीको निर्देशन पालना गर्नुहोस्।
+sms: "अभ्यास - बाढी चेतावनी: {district}मा {river} बढ्दैछ। अहिले नै {shelter}मा जानुहोस्।"

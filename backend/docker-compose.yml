@@ -1,0 +1,47 @@
+# Flood Rescue AI services.
+#   docker compose -f backend/docker-compose.yml up -d db redis        # just PostGIS + Redis
+#   docker compose -f backend/docker-compose.yml --profile full up -d  # + API and RQ worker
+# Without the "full" profile, run the API and worker from the "flood" conda env:
+#   uvicorn backend.app.main:app --reload
+#   rq worker --url redis://localhost:6379/0 flood
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: flood
+      POSTGRES_PASSWORD: flood          # local development only
+      POSTGRES_DB: flood
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flood"]
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  api:
+    profiles: ["full"]
+    build: {context: .., dockerfile: backend/Dockerfile}
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+    environment: &env
+      DATABASE_URL: postgresql+psycopg://flood:flood@db:5432/flood
+      REDIS_URL: redis://redis:6379/0
+      DATA_ROOT: /data
+      CORS_ORIGINS: http://localhost:5173
+    volumes: ["${DATA_ROOT:?set DATA_ROOT}:/data", "..:/app"]
+    ports: ["8000:8000"]
+    depends_on: {db: {condition: service_healthy}, redis: {condition: service_started}}
+  worker:
+    profiles: ["full"]
+    build: {context: .., dockerfile: backend/Dockerfile}
+    command: rq worker --url redis://redis:6379/0 flood
+    environment: *env
+    volumes: ["${DATA_ROOT:?set DATA_ROOT}:/data", "..:/app"]
+    depends_on: [db, redis]
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
+volumes:
+  pgdata:

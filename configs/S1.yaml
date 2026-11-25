@@ -1,0 +1,9 @@
+# S1: cross-region test. Train on Louisiana-East only, test on Germany (hilly towns, other sensor).
+base: S0.yaml
+description: S0 recipe trained on Louisiana-East, tested on Germany
+data:
+  train_split: sn8_cross_train
+  val_split: sn8_cross_test   # no separate Germany val: early stopping uses the test area,
+                              # so read S1 as an upper bound on cross-region performance
+eval:
+  splits: [sn8_cross_test]

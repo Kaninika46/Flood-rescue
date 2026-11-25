@@ -1,0 +1,5 @@
+# E6: E5 + HAND as a third input channel (HAND filter initialised with the mean of VV/VH/ratio).
+base: E5.yaml
+description: E5 recipe with inputs VV, VH and HAND
+data:
+  channels: [VV, VH, HAND]

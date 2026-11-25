@@ -1,0 +1,11 @@
+# FwDET v2.1 parameters (src/depth/fwdet.py). Defaults follow FwDET where it has one.
+experiment: depth
+fwdet:
+  min_hole_px: 50          # fill holes in the flood mask smaller than this (pixels)
+  min_object_px: 0         # drop flood specks smaller than this (0 = keep all)
+  smooth_iterations: 10    # FwDET: 10 focal-mean passes over boundary elevations
+  smooth_size: 5           # FwDET: 5x5 window
+  remove_ocean: true       # drop boundary cells next to DEM <= 0
+  min_slope_pct: 0.5       # FwDET v2.1: keep boundary cells steeper than 0.5 % rise
+  max_slope_deg: null      # optional: also drop boundary cells steeper than this (degrees)
+  lowpass_passes: 1        # FwDET's final 3x3 low-pass of the depth
