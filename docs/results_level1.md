@@ -37,6 +37,29 @@ Findings so far:
 - E3, the ETCI model with no Sen1Floods11 training, is already close to the random forest and
   better on Bolivia (0.672 vs 0.622): the dB -> PNG mapping (`docs/E3_notes.md`) matters most.
 
+## Training protocol change for the U-Nets (E4 onwards)
+
+The first E4 run used early stopping with `train.patience: 10`. On `s11_val` the IoU of every
+seed rose to about 0.62 within 2 to 5 epochs and then went up and down between 0.60 and 0.65
+from epoch to epoch, without a clear trend. With that much noise, 10 epochs without a new best
+happen by chance: seeds 1 and 2 stopped after 14 epochs, both keeping the checkpoint of their
+4th epoch, while seed 0 ran 33 epochs and kept its 23rd.
+
+From now on every U-Net trains all 60 epochs (`train.patience: 60` in `configs/E4.yaml`, which
+E5, E6 and the ensemble members inherit through `base:`) and keeps the checkpoint with the best
+`s11_val` IoU. Nothing else changed. The decision was made from validation curves only; no test
+or Bolivia number was used to choose it, and the first run stays on record as
+`docs/results/level1/E4_patience10.json` (checkpoints in `$DATA_ROOT/checkpoints/E4_patience10-s*`).
+
+Outcome, measured after the change (IoU, mean ± std over seeds 0, 1, 2; batch 16 x 1):
+
+| E4 run | Best val epoch (s0, s1, s2) | IoU test | IoU Bolivia |
+|---|---|---|---|
+| patience 10 | 22, 3, 3 | 0.649 ± 0.014 | 0.566 ± 0.149 |
+| all 60 epochs | 19, 12, 7 | 0.658 ± 0.008 | 0.655 ± 0.028 |
+
+The seeds now agree far better on Bolivia; E4 still stays below E1 and E3 there.
+
 ## To run on the laptop GPU
 
 E0 (needs the ETCI images), E4 to E6 (3 seeds each), the E6 ensemble (5 members) and E7 fusion:

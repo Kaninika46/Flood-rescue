@@ -24,7 +24,7 @@ train:
   weight_decay: 1.0e-4
   warmup_epochs: 1
   min_lr_ratio: 0.01
-  patience: 10
+  patience: 60               # = epochs: train all 60 epochs, keep the best-validation checkpoint
   amp: true
   num_workers: 4
   threshold: 0.5
