@@ -2,7 +2,7 @@
 
 An alert can be sent only when it is ``approved`` and carries both ``approved_by`` and
 ``approved_at`` (README, "Project rules"). Approval needs a named officer. A sent alert is
-never sent again; a draft can be cancelled.
+never sent again; a draft or approved alert can be cancelled with a reason.
 """
 
 from __future__ import annotations
@@ -30,6 +30,8 @@ class AlertRecord:
     approved_at: datetime | None = None
     sent_at: datetime | None = None
     sent_to: list[str] = field(default_factory=list)
+    cancel_reason: str | None = None
+    cancelled_at: datetime | None = None
 
 
 def approve(record: AlertRecord, officer: str, when: datetime | None = None) -> AlertRecord:
@@ -60,8 +62,19 @@ def mark_sent(record: AlertRecord, recipients: list[str], when: datetime | None 
     record.sent_to = list(recipients)
 
 
-def cancel(record: AlertRecord) -> None:
-    """Cancel a draft or an approved alert that was not sent."""
+def cancel(record: AlertRecord, reason: str, when: datetime | None = None) -> AlertRecord:
+    """Cancel a draft or an approved alert that was not sent, keeping the reason and time.
+
+    Cancelled alerts stay in the record (who drafted, approved and cancelled what, and why);
+    they are never deleted.
+    """
     if record.state == "sent":
         raise ApprovalError("a sent alert cannot be cancelled; issue a Cancel message instead")
+    if record.state == "cancelled":
+        raise ApprovalError(f"alert {record.alert_id} is already cancelled")
+    if not reason or not reason.strip():
+        raise ApprovalError("cancelling needs a reason")
     record.state = "cancelled"
+    record.cancel_reason = reason.strip()
+    record.cancelled_at = when or datetime.now(UTC)
+    return record

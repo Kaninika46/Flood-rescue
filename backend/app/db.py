@@ -29,6 +29,11 @@ def init_db(engine: Engine | None = None) -> None:
     with engine.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
     Base.metadata.create_all(engine)
+    with engine.begin() as conn:  # columns added after the first release
+        conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS cancel_reason TEXT"))
+        conn.execute(
+            text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ")
+        )
 
 
 def get_session() -> Iterator[Session]:

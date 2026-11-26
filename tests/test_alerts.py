@@ -120,6 +120,15 @@ def test_approval_rules() -> None:
     record = approve(_record(), "Officer B")
     with pytest.raises(ApprovalError):
         approve(record, "Officer C")
-    cancel(record)
-    assert record.state == "cancelled"
+    with pytest.raises(ApprovalError, match="reason"):
+        cancel(record, "  ")
+    cancel(record, "superseded: computed with the old depth basis")
+    assert record.state == "cancelled" and record.cancel_reason.startswith("superseded")
+    assert record.cancelled_at is not None
+    with pytest.raises(ApprovalError, match="already cancelled"):
+        cancel(record, "again")
+    sent = approve(_record(), "Officer B")
+    sent.state = "sent"
+    with pytest.raises(ApprovalError, match="sent alert cannot be cancelled"):
+        cancel(sent, "too late")
     assert mask_number(TEST_PHONE) == "+155XXXXX100"

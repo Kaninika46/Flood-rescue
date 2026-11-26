@@ -45,6 +45,8 @@ export type Alert = {
   sent_count: number | null;
   priority_id: number | null;
   cap_xml: string;
+  cancel_reason?: string | null;
+  cancelled_at?: string | null;
 };
 
 export type ReportKind = "road_open" | "road_closed" | "bridge_gone" | "flooded";

@@ -68,6 +68,10 @@ class ApproveIn(BaseModel):
     officer: str = Field(min_length=2)
 
 
+class CancelIn(BaseModel):
+    reason: str = Field(min_length=3)
+
+
 class SendIn(BaseModel):
     recipients: list[str] | None = None
     gateway: str = Field(default="console", pattern="^(console|twilio)$")
@@ -213,7 +217,8 @@ def list_priorities(scene_id: int | None = None,
 def _alert_json(a: Alert) -> dict[str, Any]:
     return {"id": a.id, "identifier": a.identifier, "state": a.state, "sms": a.sms,
             "approved_by": a.approved_by, "approved_at": a.approved_at, "sent_at": a.sent_at,
-            "sent_count": a.sent_count, "priority_id": a.priority_id, "cap_xml": a.cap_xml}
+            "sent_count": a.sent_count, "priority_id": a.priority_id, "cap_xml": a.cap_xml,
+            "cancel_reason": a.cancel_reason, "cancelled_at": a.cancelled_at}
 
 
 @app.get("/alerts")
@@ -238,6 +243,18 @@ def approve_alert(alert_id: int, body: ApproveIn,
     """Officer approval (records approved_by and approved_at)."""
     try:
         return _alert_json(services.approve_alert(session, alert_id, body.officer))
+    except KeyError as err:
+        raise HTTPException(404, "alert not found") from err
+    except ApprovalError as err:
+        raise HTTPException(409, str(err)) from err
+
+
+@app.post("/alerts/{alert_id}/cancel")
+def cancel_alert(alert_id: int, body: CancelIn,
+                 session: Session = Depends(get_session)) -> dict[str, Any]:
+    """Cancel a draft or approved alert with a reason; the record is kept, never deleted."""
+    try:
+        return _alert_json(services.cancel_alert(session, alert_id, body.reason))
     except KeyError as err:
         raise HTTPException(404, "alert not found") from err
     except ApprovalError as err:

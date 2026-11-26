@@ -25,7 +25,7 @@ class Scene(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     s1_path: Mapped[str] = mapped_column(Text)
-    state: Mapped[str] = mapped_column(String(20), default="new")  # new/processing/done/failed
+    state: Mapped[str] = mapped_column(String(20), default="new")  # new/processing/done/failed/superseded
     minutes: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -104,6 +104,8 @@ class Alert(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_count: Mapped[int] = mapped_column(Integer, default=0)  # numbers are never stored
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

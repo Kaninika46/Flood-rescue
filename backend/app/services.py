@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.models import Alert, FieldReport, FloodLayer, Priority, RoadStatus, Route, Scene
-from src.alerts.approval import AlertRecord, approve, check_sendable
+from src.alerts.approval import AlertRecord, approve, cancel, check_sendable
 from src.alerts.cap import AlertContent, build_alert, polygon_from_geometry, sms_text
 from src.alerts.gateway import ConsoleGateway, TwilioSmsGateway, load_test_recipients, send_alert
 from src.common.config import data_path, load_config, repo_root
@@ -155,6 +155,29 @@ def approve_alert(session: Session, alert_id: int, officer: str) -> Alert:
     a.state, a.approved_by, a.approved_at = rec.state, rec.approved_by, rec.approved_at
     session.commit()
     return a
+
+
+def cancel_alert(session: Session, alert_id: int, reason: str) -> Alert:
+    """draft/approved -> cancelled, with the reason and time (the row is kept)."""
+    a = session.get(Alert, alert_id)
+    if a is None:
+        raise KeyError(alert_id)
+    rec = _record(a)
+    rec.sent_at = a.sent_at
+    cancel(rec, reason)
+    a.state, a.cancel_reason, a.cancelled_at = rec.state, rec.cancel_reason, rec.cancelled_at
+    session.commit()
+    return a
+
+
+def supersede_scene(session: Session, scene_id: int) -> Scene:
+    """Mark a scene superseded (kept, but no longer the latest ``done`` scene)."""
+    s = session.get(Scene, scene_id)
+    if s is None:
+        raise KeyError(scene_id)
+    s.state = "superseded"
+    session.commit()
+    return s
 
 
 def send_alert_row(session: Session, alert_id: int, recipients: list[str] | None,

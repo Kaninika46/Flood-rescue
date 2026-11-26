@@ -54,6 +54,11 @@ function AlertCard({ a, onApprove, onSend }: { a: Alert } & Omit<Props, "alerts"
       {a.state === "sent" && (
         <p className="muted">Sent to {a.sent_count} test phone(s) at {fmtTime(a.sent_at)}</p>
       )}
+      {a.state === "cancelled" && (
+        <p className="muted">
+          Cancelled at {fmtTime(a.cancelled_at ?? null)}: {a.cancel_reason ?? "no reason recorded"}
+        </p>
+      )}
     </li>
   );
 }

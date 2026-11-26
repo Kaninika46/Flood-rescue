@@ -153,3 +153,19 @@ def test_road_status_bbox(client) -> None:
     ids = {f["properties"]["edge_id"] for f in fc["features"]}
     assert "A_B_0" in ids and "E_F_0" not in ids
     assert client.get("/roads/status", params={"bbox": "x"}).status_code == 400
+
+
+def test_alert_cancel_keeps_record_with_reason(client) -> None:
+    pr = client.get("/priorities").json()["features"][0]["properties"]
+    alert = client.post("/alerts", json={"priority_id": pr["id"]}).json()
+    assert client.post(f"/alerts/{alert['id']}/cancel", json={"reason": ""}).status_code == 422
+    c = client.post(f"/alerts/{alert['id']}/cancel", json={"reason": "superseded by scene 3"})
+    body = c.json()
+    assert body["state"] == "cancelled" and body["cancel_reason"] == "superseded by scene 3"
+    assert body["cancelled_at"]
+    # kept in the list, cannot be approved or cancelled again
+    assert any(a["id"] == alert["id"] for a in client.get("/alerts").json())
+    approve = client.post(f"/alerts/{alert['id']}/approve", json={"officer": "Officer Sharma"})
+    assert approve.status_code == 409
+    again = client.post(f"/alerts/{alert['id']}/cancel", json={"reason": "again"})
+    assert again.status_code == 409
