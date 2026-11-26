@@ -18,8 +18,8 @@ model:
   etci_weights: weights/etci/unet_pseudo_mobilenetv2_round2_0.pth
 train:
   epochs: 60
-  batch_size: 8
-  accum_steps: 2             # effective batch 16: keep batch_size x accum_steps = 16
+  batch_size: 16
+  accum_steps: 1             # effective batch 16; all E4–E6 runs used 16 × 1
   lr: 3.0e-4
   weight_decay: 1.0e-4
   warmup_epochs: 1

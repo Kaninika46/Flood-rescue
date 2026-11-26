@@ -60,6 +60,17 @@ Outcome, measured after the change (IoU, mean ± std over seeds 0, 1, 2; batch 1
 
 The seeds now agree far better on Bolivia; E4 still stays below E1 and E3 there.
 
+### Batch size
+
+Every E4, E5 and E6 training run used batch 16 × 1 (`batch_size` 16, `accum_steps` 1), now the
+value in `configs/E4.yaml`; the runs before this change passed it as a `--set` override.
+One exception: E6-s3 stopped after epoch 51 and was resumed without the override, so epochs
+52 to 59 (the last 8 of 60) ran at 8 × 2 (same effective batch 16). Its `best.pt` is from
+before the stop (epoch 44, val IoU 0.6701) and is the checkpoint used for evaluation and the
+ensemble; no epoch after the resume beat it. The resume overwrote
+`$DATA_ROOT/checkpoints/E6-s3/config.yaml`, which now shows 8 × 2; the original settings are
+in the MLflow params of run E6-s3.
+
 ## To run on the laptop GPU
 
 E0 (needs the ETCI images), E4 to E6 (3 seeds each), the E6 ensemble (5 members) and E7 fusion:
