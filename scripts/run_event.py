@@ -59,7 +59,13 @@ def main(
             row = Scene(name=scene.stem, s1_path=str(scene), state="processing")
             session.add(row)
             session.commit()
-            store_event(session, row, run)
+            try:
+                store_event(session, row, run)
+            except Exception:
+                session.rollback()
+                row.state = "failed"  # never left "processing" after an error
+                session.commit()
+                raise
             log.info("stored scene %d", row.id)
     for step, minutes in run.minutes.items():
         print(f"{step:10s} {minutes:7.2f} min")

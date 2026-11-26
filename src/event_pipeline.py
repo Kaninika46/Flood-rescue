@@ -8,7 +8,8 @@ Used by ``scripts/run_event.py`` (D2: stores results in the database) and
                 when that file exists), used by the priority step. It also counts the normal river
                 channel, so exposure is an upper estimate (safety first: src/level1_radar/
                 flood_mask.py). The new-water map (b) is not used: it under-counts flood.
-2. ``depth``    FwDET depth on a 30 m UTM grid (src/depth)
+2. ``depth``    FwDET depth of the map (a) mask on a 30 m UTM grid (src/depth): the same flood
+                and depth basis as the replay, so roads, routes and cut-off areas agree
 3. ``level2``   SpaceNet 8 road status, only when Maxar tiles are given (sn8 env; an evaluation
                 folder with ``road_status.geojson`` is read)
 4. ``roads``    status of every road edge + a demo route (src/routing)
@@ -21,6 +22,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -85,14 +87,19 @@ def step_mask(run: EventRun, threshold: float = 0.5) -> None:
 
 
 def step_depth(run: EventRun, threshold: float = 0.5, resolution_m: float = 30.0) -> None:
-    """Depth GeoTIFF from the probability map."""
+    """Depth GeoTIFF from the map (a) mask, as in the replay (``scripts/nepal_level1.py``).
+
+    Permanent water stays out: depth from the raw probability gave the river under the Koshi
+    bridge (Mahendra Highway, JRC occurrence 97 %) 0.83 m, which closed the bridge and cut
+    Hanumannagar Kankalini off in run_event but not in the replay.
+    """
     from src.common.raster import write_raster
     from src.depth.depth_map import depth_from_flood
     from src.depth.fwdet import FwdetSettings
 
     settings = FwdetSettings(**load_config(repo_root() / "configs" / "depth.yaml")["fwdet"])
     depth, grid = depth_from_flood(
-        run.outputs["prob"], settings, threshold=threshold, resolution_m=resolution_m
+        run.outputs["mask"], settings, is_mask=True, threshold=threshold, resolution_m=resolution_m
     )
     out = run.out_dir / f"{run.scene.stem}_depth.tif"
     write_raster(
@@ -185,6 +192,13 @@ def step_priority(run: EventRun, G: Any) -> Any:
     return ranked
 
 
+def alert_identifier(scene: Path, now: datetime | None = None) -> str:
+    """``<scene stem>-<UTC time>-p1``: unique per run, since CAP identifiers must not repeat and
+    the same scene may be processed again. Used for both the database row and CAP <identifier>.
+    """
+    return f"{scene.stem}-{(now or datetime.now(UTC)):%Y%m%dT%H%M%SZ}-p1"
+
+
 def step_alert(run: EventRun, ranked: Any) -> Any:
     """CAP draft for the top-priority area (draft only)."""
     from src.alerts.approval import AlertRecord
@@ -203,8 +217,9 @@ def step_alert(run: EventRun, ranked: Any) -> Any:
         area_desc=f"{top['area_name']} (priority 1); {cfg['area_note']}",
         polygon=polygon_from_geometry(top.geometry),
     )
-    xml = build_alert(content)
-    record = AlertRecord(alert_id=f"{run.scene.stem}-p1", cap_xml=xml, sms=sms_text(content))
+    alert_id = alert_identifier(run.scene)
+    xml = build_alert(content, identifier=alert_id)
+    record = AlertRecord(alert_id=alert_id, cap_xml=xml, sms=sms_text(content))
     (run.out_dir / f"{record.alert_id}.xml").write_text(xml, encoding="utf-8")
     run.outputs["alert"] = record
     return record
