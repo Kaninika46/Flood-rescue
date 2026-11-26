@@ -13,9 +13,11 @@ admin:
   name_field: shapeName
 facilities:
   path: nepal/osm/facilities.geojson    # OSM amenity=hospital|clinic + place=city|town
-# (b) new water (post and not pre, minus JRC >= 50 %) from scripts/nepal_level1.py, so the normal
-# river channel is not counted as exposed; (a) all water is S1_20240927_model_mask.tif
-flood_mask: nepal/level1/S1_20240927_model_new_mask.tif
+# (a) all water minus JRC >= 50 % (scripts/nepal_level1.py). Chosen on a safety principle: for
+# rescue, under-counting flooded people is worse than over-counting. (a) also counts the normal Koshi
+# channel and seasonal water, so exposure and priorities are an UPPER ESTIMATE. (b) new water
+# (S1_20240927_model_new_mask.tif) recalled only 12 % of UNOSAT's flood (docs/nepal_level1.md).
+flood_mask: nepal/level1/S1_20240927_model_mask.tif
 std: nepal/level1/S1_20240927_flood_std.tif
 threshold: 0.5
 method: majority            # or fraction (see src/priority/exposure.py)
@@ -31,3 +33,5 @@ alert:
   river: Koshi
   district: Sunsari and Saptari
   shelter: the nearest school or health post on high ground
+  # appended to the CAP areaDesc of every alert built from map (a)
+  area_note: "flood extent is an upper estimate: it includes the normal Koshi channel"

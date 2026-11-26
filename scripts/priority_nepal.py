@@ -131,20 +131,29 @@ def write_report(exposure: object, ranked: object, cfg: dict) -> None:
         f"(method `{cfg['method']}`, flood threshold {cfg['threshold']}).",
         "",
         f"- Flooded area inside the analysed local levels: **{flooded:.1f} km^2**",
-        f"- Exposed people (our estimate): **{total:,.0f}**",
+        f"- Exposed people (our estimate, **upper estimate**): **{total:,.0f}**",
         f"- UNOSAT estimate, same date: **{ref:,}** ({total / ref:.0%} of it). Analysis: UNOSAT",
+        "",
+        "**Upper estimate.** The flood map is (a), all water minus JRC permanent water "
+        f"(`{cfg['flood_mask']}`). It also counts the normal Koshi channel and seasonal water "
+        "(river bars, ponds wet every monsoon), so flooded area, exposed people and the priority "
+        "list are an upper estimate. This is deliberate: for rescue, under-counting flooded "
+        "people is worse than over-counting. The new-water map (b) was rejected because it "
+        "missed most of UNOSAT's flood (`docs/nepal_level1.md`).",
         "",
         "## Why the numbers differ",
         "",
         "- **Population layer.** We use WorldPop 100 m constrained (people placed only in mapped "
         "buildings); UNOSAT used WorldPop unconstrained UN-adjusted 2020 (100 m), which also puts "
         "people in unbuilt cells.",
-        "- **Flood extent.** Our map is the U-Net ensemble without permanent water; UNOSAT draws "
+        "- **Flood extent.** Our map is the U-Net ensemble without permanent water, but with the "
+        "normal channel and seasonal water; UNOSAT draws "
         "its extent from its own Sentinel-1 analysis of the same date, against its own "
         "11 June 2024 reference water.",
         "- **Counting rule.** A 100 m cell counts as flooded only when at least half of it is "
         "flooded (`majority`); `fraction` counts partial cells proportionally.",
-        "- **Area.** Only local levels inside `analysis_bbox` are counted.",
+        "- **Area.** Only local levels inside `analysis_bbox` are counted; UNOSAT's figure covers "
+        "all of its Koshi and Madhesh analysis area.",
         "- **Radar limits.** Flooded settlements (buildings, trees) are often missed by C-band "
         "radar, which lowers our count where people actually live.",
         "",

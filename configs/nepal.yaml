@@ -33,6 +33,7 @@ model:
   config: configs/E6ens.yaml   # the Level 1 ensemble used for the replay
   threshold: 0.5
 permanent_water_occurrence: 50   # JRC occurrence (%) above which water is "normal", not flood
+sensitivity_jrc_occurrence: 10   # map (c), sensitivity analysis only: also drop seasonal water
 unosat:
   # UNOSAT product FL20240928NPL (Sentinel-1, 10 m), published 2 Oct 2024. Credit: "Analysis: UNOSAT".
   # Each post date is compared with the UNOSAT layers whose FILE NAME has the same date, inside that

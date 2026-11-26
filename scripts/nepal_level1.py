@@ -54,7 +54,7 @@ from src.level1_radar.terrain import iter_windows
 log = get_logger("nepal_level1")
 app = typer.Typer(add_completion=False, help=__doc__)
 STEPS = ("terrain", "predict", "masks", "depth", "compare")
-METHODS = ("model", "model_new", "change_otsu", "otsu")
+METHODS = ("model", "model_new", "model_jrc10", "change_otsu", "otsu")
 BLOCK = 4096
 
 
@@ -232,6 +232,7 @@ def step_masks(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
     available = {
         "model": prob_path.exists(),
         "model_new": prob_path.exists() and pre_prob_path is not None and pre_prob_path.exists(),
+        "model_jrc10": prob_path.exists() and data_path(cfg["paths"]["jrc"]).exists(),
         "change_otsu": pre is not None,
         "otsu": True,
     }
@@ -260,6 +261,7 @@ def step_masks(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
         )
         log.info("change (after - before) VH threshold %.2f dB", change_threshold)
     occ_limit = cfg["permanent_water_occurrence"]
+    sens_limit = cfg.get("sensitivity_jrc_occurrence", 10)
     max_hand = cfg["change_otsu"]["max_hand_m"]
     threshold = cfg["model"]["threshold"]
     with rasterio.open(post) as src:
@@ -281,6 +283,10 @@ def step_masks(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
                         masks["model_new"], extra_no_data["model_new"] = new_water(
                             prob, read_aligned(pre_prob_path, src, window), threshold
                         )
+                    if "model_jrc10" in outs:
+                        # (c) sensitivity only: also drop seasonal water (JRC >= 10 %)
+                        with np.errstate(invalid="ignore"):
+                            masks["model_jrc10"] = masks["model"] & ~(jrc >= sens_limit)
                 with np.errstate(invalid="ignore"):
                     masks["otsu"] = vv_vh[1] < vh_threshold
                     if change_threshold is not None:
@@ -576,6 +582,7 @@ def make_figures(cfg: dict[str, Any], post: Path, max_px: int = 1600) -> None:
 METHOD_NAMES = {
     "model": "(a) E6 ensemble, all water minus JRC >= 50 %",
     "model_new": "(b) E6 ensemble, new water (post and not pre)",
+    "model_jrc10": "(c) E6 ensemble, all water minus JRC >= 10 % (sensitivity)",
     "change_otsu": "Change-detection Otsu",
     "otsu": "Single-date Otsu (VH)",
 }
@@ -599,49 +606,66 @@ def write_doc(cfg: dict[str, Any]) -> None:
         f"**{CREDIT}** (United Nations Satellite Centre, FL20240928NPL, preliminary, not",
         "field-validated). Contains modified Copernicus Sentinel data [2024].",
         "",
-        "## Two versions of our flood map",
+        "## Three versions of our flood map",
         "",
-        "- **(a) All water minus JRC.** The E6 ensemble finds every pixel of open water on the",
-        "  post date; water JRC saw in at least "
-        f"{cfg['permanent_water_occurrence']} % of its observations is removed.",
+        "- **(a) All water minus JRC: used for priority, exposure, alerts and `run_event`.**",
+        "  The E6 ensemble finds every pixel of open water on the post date; water JRC saw in at",
+        f"  least {cfg['permanent_water_occurrence']} % of its observations is removed.",
         "- **(b) New water.** The same ensemble also runs on the pre-flood scene of the same",
         "  relative orbit (`S1_<post date>_pre.tif`, the latest acquisition in "
         f"{' to '.join(cfg['dates'].get('pre_window', ['the pre-flood window']))}),",
-        "  and flood is water in the post scene that is not water in the pre scene. JRC",
-        "  permanent water is removed as in (a). (b) is the map used for exposure and priority",
-        "  (`configs/priority.yaml`), so the normal river channel does not count as exposed.",
+        "  and flood is water in the post scene that is not water in the pre scene (JRC",
+        "  permanent water removed as in (a)).",
+        "- **(c) All water minus JRC >= "
+        f"{cfg.get('sensitivity_jrc_occurrence', 10)} %: sensitivity analysis only.** As (a), but",
+        "  seasonal water is removed too.",
+        "",
+        "**Why (a) for rescue.** The choice follows a safety principle, not the UNOSAT score: for",
+        "rescue, under-counting flooded people is worse than over-counting them. (a) finds most",
+        "of UNOSAT's flood but also counts the normal Koshi channel and seasonal water, so its",
+        "flooded area and the exposure and priorities built on it are an **upper estimate**.",
         "",
         'UNOSAT\'s layers are "New Water / Water Increase" against **its own reference image,',
         "Sentinel-1 of 11 June 2024**, which is not part of the product. Our pre scenes are from",
         "**mid-September 2024**, deep in the monsoon, when much more of the floodplain is already",
         "wet. Water that appeared between June and mid-September counts as new for UNOSAT but",
-        "not for (b), so **(b) may under-count relative to UNOSAT**; (a) over-counts because it",
-        "keeps all seasonal water. The two bracket UNOSAT's definition.",
+        "not for (b).",
         "",
     ]
-    findings, recalls = [], []
+    findings, side = [], []
     for day in cfg["dates"]["post"]:
         path = _result_path(Path(f"S1_{day.replace('-', '')}.tif"))
         if path.exists():
             res = json.loads(path.read_text(encoding="utf-8"))
             by_jrc = res.get("false_flood_km2_by_jrc_occurrence", {}).get("model")
             whole = res["regions"]["unosat_extent"]
-            methods = whole["methods"]
-            if "model" in methods and "model_new" in methods:
-                a, b = methods["model"], methods["model_new"]
-                recalls.append(
-                    f"| {day} | {whole['unosat_flood_km2']} | {a['flooded_km2']} | {a['recall']} | "
-                    f"{b['flooded_km2']} | {b['recall']} | {b['precision']} |"
-                )
+            for m in ("model", "model_new", "model_jrc10"):
+                if m in whole["methods"]:
+                    r = whole["methods"][m]
+                    side.append(
+                        f"| {day} | {METHOD_NAMES[m]} | {whole['unosat_flood_km2']} | "
+                        f"{r['flooded_km2']} | {r['iou']} | {r['precision']} | {r['recall']} |"
+                    )
             if by_jrc:
                 findings.append(
                     f"| {day} | {sum(by_jrc.values()):.1f} | "
                     + " | ".join(f"{v:.1f}" for v in by_jrc.values())
                     + " |"
                 )
+    if side:
+        lines += [
+            "## (a), (b) and (c) against UNOSAT",
+            "",
+            "Inside UNOSAT's analysis extent of the same date (permanent water left out):",
+            "",
+            "| Date | Map | UNOSAT km^2 | Ours km^2 | IoU | Precision | Recall |",
+            "|---|---|---|---|---|---|---|",
+            *side,
+            "",
+        ]
     if findings:
         lines += [
-            "## Seasonal water: why (a) disagrees with UNOSAT",
+            "## Seasonal water: why (a) over-counts against UNOSAT",
             "",
             "Area that (a) marks as flood but UNOSAT does not, inside the analysis extent, split",
             "by JRC water occurrence (km^2):",
@@ -654,28 +678,26 @@ def write_doc(cfg: dict[str, Any]) -> None:
             "49 %): the braided Koshi channels, sand bars and floodplain ponds that are wet every",
             "monsoon. JRC >= 50 % does not remove them, but UNOSAT's June 2024 reference does.",
             "(a)'s recall is high, so the extra area is mostly a difference of definition, not",
-            "missed detections; (b) removes water already present in mid-September.",
+            "missed detections. (c) removes the seasonal water as well; it shrinks (a)'s area, but",
+            "its recall falls too (table above), because much of UNOSAT's flood lies on the same",
+            "seasonally wet floodplain. A seasonal-water mask cannot separate the normal channel",
+            "from the flood, so (c) stays a sensitivity analysis and (a) the map for rescue.",
             "",
         ]
-    if recalls:
+    if side:
         lines += [
-            "## New water (b): low recall against UNOSAT",
+            "## Why (b) fails",
             "",
-            "| Date | UNOSAT km^2 | (a) km^2 | (a) recall | (b) km^2 | (b) recall "
-            "| (b) precision |",
-            "|---|---|---|---|---|---|---|",
-            *recalls,
-            "",
-            "(b) removes nearly all of (a)'s seasonal false flood (see its false-flood split in",
-            "`docs/results/nepal_level1_<date>.json`), but it also loses most of UNOSAT's flood:",
-            "the gap between (a)'s and (b)'s recall is UNOSAT flood that our model already saw as",
-            "water in the mid-September pre scene. This is the expected direction (UNOSAT's",
-            "reference is June 2024, ours is mid-September), but the size is large: by this",
-            "comparison, most of what UNOSAT reports as new water was already wet before",
-            "27 September. (b) therefore under-counts flood relative to UNOSAT, and exposure",
-            "computed from (b) under-counts accordingly. Precision does not rise with (b): most of",
-            "its new water is not in UNOSAT's layer either (open these places in QGIS; candidates",
-            "are wet soil, new sand bars and changes between orbits).",
+            "(b) removes nearly all of (a)'s seasonal false flood (see the false-flood split in",
+            "`docs/results/nepal_level1_<date>.json`), but it also loses most of UNOSAT's flood.",
+            "The gap between (a)'s and (b)'s recall is UNOSAT flood that our model already saw as",
+            "water in the **mid-September pre scene**: the floodplain was already wet then, after",
+            "weeks of monsoon. UNOSAT compares with June, before most of that water appeared, so",
+            "it counts it as new; (b) does not. (b) therefore under-counts flood, and exposure",
+            "from (b) would under-count people, which is why it is not used for rescue. Its",
+            "precision does not rise either: most of its new water is not in UNOSAT's layer",
+            "(candidates to check in QGIS: wet soil, new sand bars, changes between orbits). A",
+            "pre scene from before the monsoon (June, like UNOSAT's) would be the fair test.",
             "",
         ]
     for day in cfg["dates"]["post"]:

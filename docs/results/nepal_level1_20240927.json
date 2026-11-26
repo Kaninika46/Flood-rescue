@@ -32,6 +32,13 @@
      "precision": 0.2002,
      "recall": 0.1161
     },
+    "model_jrc10": {
+     "flooded_km2": 85.63,
+     "iou": 0.199,
+     "f1": 0.332,
+     "precision": 0.2631,
+     "recall": 0.4496
+    },
     "change_otsu": {
      "flooded_km2": 788.4,
      "iou": 0.0233,
@@ -68,6 +75,13 @@
      "precision": 0.201,
      "recall": 0.1163
     },
+    "model_jrc10": {
+     "flooded_km2": 85.45,
+     "iou": 0.1994,
+     "f1": 0.3324,
+     "precision": 0.2635,
+     "recall": 0.4503
+    },
     "change_otsu": {
      "flooded_km2": 785.51,
      "iou": 0.0233,
@@ -95,6 +109,11 @@
    "never water (0)": 17.2,
    "rare (1-9)": 3.5,
    "seasonal (10-49)": 2.5
+  },
+  "model_jrc10": {
+   "never water (0)": 39.5,
+   "rare (1-9)": 23.6,
+   "seasonal (10-49)": 0.0
   },
   "change_otsu": {
    "never water (0)": 710.3,
@@ -206,6 +225,56 @@
     "area_km2": 0.372,
     "lon": 86.1905,
     "lat": 26.7162
+   }
+  ],
+  "model_jrc10": [
+   {
+    "type": "false_flood",
+    "area_km2": 3.026,
+    "lon": 87.0774,
+    "lat": 26.7494
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 1.176,
+    "lon": 86.9781,
+    "lat": 26.5682
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 1.11,
+    "lon": 86.8782,
+    "lat": 26.4633
+   },
+   {
+    "type": "missed_flood",
+    "area_km2": 1.043,
+    "lon": 86.9635,
+    "lat": 26.5834
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.956,
+    "lon": 86.8741,
+    "lat": 26.4977
+   },
+   {
+    "type": "missed_flood",
+    "area_km2": 0.906,
+    "lon": 87.0481,
+    "lat": 26.7009
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.85,
+    "lon": 86.8671,
+    "lat": 26.7515
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.79,
+    "lon": 86.1359,
+    "lat": 26.8993
    }
   ],
   "change_otsu": [

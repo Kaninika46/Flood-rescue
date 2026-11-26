@@ -8,24 +8,43 @@ UNOSAT's included: the product has no permanent-water layer of its own.
 **Analysis: UNOSAT** (United Nations Satellite Centre, FL20240928NPL, preliminary, not
 field-validated). Contains modified Copernicus Sentinel data [2024].
 
-## Two versions of our flood map
+## Three versions of our flood map
 
-- **(a) All water minus JRC.** The E6 ensemble finds every pixel of open water on the
-  post date; water JRC saw in at least 50 % of its observations is removed.
+- **(a) All water minus JRC: used for priority, exposure, alerts and `run_event`.**
+  The E6 ensemble finds every pixel of open water on the post date; water JRC saw in at
+  least 50 % of its observations is removed.
 - **(b) New water.** The same ensemble also runs on the pre-flood scene of the same
   relative orbit (`S1_<post date>_pre.tif`, the latest acquisition in 2024-09-01 to 2024-09-20),
-  and flood is water in the post scene that is not water in the pre scene. JRC
-  permanent water is removed as in (a). (b) is the map used for exposure and priority
-  (`configs/priority.yaml`), so the normal river channel does not count as exposed.
+  and flood is water in the post scene that is not water in the pre scene (JRC
+  permanent water removed as in (a)).
+- **(c) All water minus JRC >= 10 %: sensitivity analysis only.** As (a), but
+  seasonal water is removed too.
+
+**Why (a) for rescue.** The choice follows a safety principle, not the UNOSAT score: for
+rescue, under-counting flooded people is worse than over-counting them. (a) finds most
+of UNOSAT's flood but also counts the normal Koshi channel and seasonal water, so its
+flooded area and the exposure and priorities built on it are an **upper estimate**.
 
 UNOSAT's layers are "New Water / Water Increase" against **its own reference image,
 Sentinel-1 of 11 June 2024**, which is not part of the product. Our pre scenes are from
 **mid-September 2024**, deep in the monsoon, when much more of the floodplain is already
 wet. Water that appeared between June and mid-September counts as new for UNOSAT but
-not for (b), so **(b) may under-count relative to UNOSAT**; (a) over-counts because it
-keeps all seasonal water. The two bracket UNOSAT's definition.
+not for (b).
 
-## Seasonal water: why (a) disagrees with UNOSAT
+## (a), (b) and (c) against UNOSAT
+
+Inside UNOSAT's analysis extent of the same date (permanent water left out):
+
+| Date | Map | UNOSAT km^2 | Ours km^2 | IoU | Precision | Recall |
+|---|---|---|---|---|---|---|
+| 2024-09-27 | (a) E6 ensemble, all water minus JRC >= 50 % | 50.14 | 179.92 | 0.224 | 0.234 | 0.8401 |
+| 2024-09-27 | (b) E6 ensemble, new water (post and not pre) | 50.14 | 29.07 | 0.0793 | 0.2002 | 0.1161 |
+| 2024-09-27 | (c) E6 ensemble, all water minus JRC >= 10 % (sensitivity) | 50.14 | 85.63 | 0.199 | 0.2631 | 0.4496 |
+| 2024-10-01 | (a) E6 ensemble, all water minus JRC >= 50 % | 49.43 | 158.89 | 0.2884 | 0.2935 | 0.9433 |
+| 2024-10-01 | (b) E6 ensemble, new water (post and not pre) | 49.43 | 35.2 | 0.1314 | 0.2793 | 0.1989 |
+| 2024-10-01 | (c) E6 ensemble, all water minus JRC >= 10 % (sensitivity) | 49.43 | 64.08 | 0.2024 | 0.2982 | 0.3866 |
+
+## Seasonal water: why (a) over-counts against UNOSAT
 
 Area that (a) marks as flood but UNOSAT does not, inside the analysis extent, split
 by JRC water occurrence (km^2):
@@ -39,25 +58,23 @@ Most of it is water JRC has seen before, the larger part seasonal (occurrence 10
 49 %): the braided Koshi channels, sand bars and floodplain ponds that are wet every
 monsoon. JRC >= 50 % does not remove them, but UNOSAT's June 2024 reference does.
 (a)'s recall is high, so the extra area is mostly a difference of definition, not
-missed detections; (b) removes water already present in mid-September.
+missed detections. (c) removes the seasonal water as well; it shrinks (a)'s area, but
+its recall falls too (table above), because much of UNOSAT's flood lies on the same
+seasonally wet floodplain. A seasonal-water mask cannot separate the normal channel
+from the flood, so (c) stays a sensitivity analysis and (a) the map for rescue.
 
-## New water (b): low recall against UNOSAT
+## Why (b) fails
 
-| Date | UNOSAT km^2 | (a) km^2 | (a) recall | (b) km^2 | (b) recall | (b) precision |
-|---|---|---|---|---|---|---|
-| 2024-09-27 | 50.14 | 179.92 | 0.8401 | 29.07 | 0.1161 | 0.2002 |
-| 2024-10-01 | 49.43 | 158.89 | 0.9433 | 35.2 | 0.1989 | 0.2793 |
-
-(b) removes nearly all of (a)'s seasonal false flood (see its false-flood split in
-`docs/results/nepal_level1_<date>.json`), but it also loses most of UNOSAT's flood:
-the gap between (a)'s and (b)'s recall is UNOSAT flood that our model already saw as
-water in the mid-September pre scene. This is the expected direction (UNOSAT's
-reference is June 2024, ours is mid-September), but the size is large: by this
-comparison, most of what UNOSAT reports as new water was already wet before
-27 September. (b) therefore under-counts flood relative to UNOSAT, and exposure
-computed from (b) under-counts accordingly. Precision does not rise with (b): most of
-its new water is not in UNOSAT's layer either (open these places in QGIS; candidates
-are wet soil, new sand bars and changes between orbits).
+(b) removes nearly all of (a)'s seasonal false flood (see the false-flood split in
+`docs/results/nepal_level1_<date>.json`), but it also loses most of UNOSAT's flood.
+The gap between (a)'s and (b)'s recall is UNOSAT flood that our model already saw as
+water in the **mid-September pre scene**: the floodplain was already wet then, after
+weeks of monsoon. UNOSAT compares with June, before most of that water appeared, so
+it counts it as new; (b) does not. (b) therefore under-counts flood, and exposure
+from (b) would under-count people, which is why it is not used for rescue. Its
+precision does not rise either: most of its new water is not in UNOSAT's layer
+(candidates to check in QGIS: wet soil, new sand bars, changes between orbits). A
+pre scene from before the monsoon (June, like UNOSAT's) would be the fair test.
 
 ## 2024-09-27
 
@@ -71,6 +88,7 @@ Analysed area 7945.6 km^2; UNOSAT flood inside it 50.14 km^2 (53.2 km^2 before r
 |---|---|---|---|---|---|
 | (a) E6 ensemble, all water minus JRC >= 50 % | 179.92 | 0.224 | 0.3661 | 0.234 | 0.8401 |
 | (b) E6 ensemble, new water (post and not pre) | 29.07 | 0.0793 | 0.147 | 0.2002 | 0.1161 |
+| (c) E6 ensemble, all water minus JRC >= 10 % (sensitivity) | 85.63 | 0.199 | 0.332 | 0.2631 | 0.4496 |
 | Change-detection Otsu | 788.4 | 0.0233 | 0.0455 | 0.0242 | 0.3804 |
 | Single-date Otsu (VH) | 1557.34 | 0.0303 | 0.0588 | 0.0303 | 0.9423 |
 
@@ -83,6 +101,7 @@ UNOSAT's own table for this date: analysed 6139 km^2, flood 41.06 km^2, about 17
 |---|---|---|---|---|---|
 | (a) E6 ensemble, all water minus JRC >= 50 % | 179.72 | 0.2242 | 0.3663 | 0.2341 | 0.8415 |
 | (b) E6 ensemble, new water (post and not pre) | 28.93 | 0.0795 | 0.1474 | 0.201 | 0.1163 |
+| (c) E6 ensemble, all water minus JRC >= 10 % (sensitivity) | 85.45 | 0.1994 | 0.3324 | 0.2635 | 0.4503 |
 | Change-detection Otsu | 785.51 | 0.0233 | 0.0455 | 0.0242 | 0.3804 |
 | Single-date Otsu (VH) | 1553.43 | 0.0303 | 0.0588 | 0.0303 | 0.9427 |
 
@@ -110,6 +129,14 @@ as radar shadow, wet soil, vegetation, a missed narrow channel or a UNOSAT edge)
 | model_new | missed_flood | 0.593 | 87.1054 | 26.7308 | |
 | model_new | missed_flood | 0.383 | 86.4978 | 26.5801 | |
 | model_new | missed_flood | 0.372 | 86.1905 | 26.7162 | |
+| model_jrc10 | false_flood | 3.026 | 87.0774 | 26.7494 | |
+| model_jrc10 | false_flood | 1.176 | 86.9781 | 26.5682 | |
+| model_jrc10 | false_flood | 1.11 | 86.8782 | 26.4633 | |
+| model_jrc10 | missed_flood | 1.043 | 86.9635 | 26.5834 | |
+| model_jrc10 | false_flood | 0.956 | 86.8741 | 26.4977 | |
+| model_jrc10 | missed_flood | 0.906 | 87.0481 | 26.7009 | |
+| model_jrc10 | false_flood | 0.85 | 86.8671 | 26.7515 | |
+| model_jrc10 | false_flood | 0.79 | 86.1359 | 26.8993 | |
 | change_otsu | missed_flood | 0.946 | 86.9065 | 26.5451 | |
 | change_otsu | false_flood | 0.912 | 86.9656 | 26.6896 | |
 | change_otsu | false_flood | 0.548 | 86.9479 | 26.6506 | |
@@ -139,6 +166,7 @@ Analysed area 6116.4 km^2; UNOSAT flood inside it 49.43 km^2 (55.28 km^2 before 
 |---|---|---|---|---|---|
 | (a) E6 ensemble, all water minus JRC >= 50 % | 158.89 | 0.2884 | 0.4477 | 0.2935 | 0.9433 |
 | (b) E6 ensemble, new water (post and not pre) | 35.2 | 0.1314 | 0.2323 | 0.2793 | 0.1989 |
+| (c) E6 ensemble, all water minus JRC >= 10 % (sensitivity) | 64.08 | 0.2024 | 0.3367 | 0.2982 | 0.3866 |
 | Change-detection Otsu | 555.74 | 0.0433 | 0.083 | 0.0452 | 0.508 |
 | Single-date Otsu (VH) | 501.37 | 0.0951 | 0.1737 | 0.0954 | 0.9684 |
 
@@ -151,6 +179,7 @@ UNOSAT's own table for this date: analysed 6139 km^2, flood 55 km^2, about 17,79
 |---|---|---|---|---|---|
 | (a) E6 ensemble, all water minus JRC >= 50 % | 158.57 | 0.2882 | 0.4474 | 0.2933 | 0.9434 |
 | (b) E6 ensemble, new water (post and not pre) | 34.92 | 0.1304 | 0.2308 | 0.2783 | 0.1971 |
+| (c) E6 ensemble, all water minus JRC >= 10 % (sensitivity) | 63.81 | 0.2019 | 0.336 | 0.2978 | 0.3855 |
 | Change-detection Otsu | 553.57 | 0.0433 | 0.0829 | 0.0452 | 0.5072 |
 | Single-date Otsu (VH) | 500.02 | 0.0951 | 0.1737 | 0.0954 | 0.9685 |
 
@@ -178,6 +207,14 @@ as radar shadow, wet soil, vegetation, a missed narrow channel or a UNOSAT edge)
 | model_new | missed_flood | 0.578 | 87.0633 | 26.6935 | |
 | model_new | false_flood | 0.317 | 86.8095 | 26.4529 | |
 | model_new | false_flood | 0.295 | 87.067 | 26.7184 | |
+| model_jrc10 | missed_flood | 1.589 | 87.0496 | 26.7019 | |
+| model_jrc10 | false_flood | 1.588 | 87.0765 | 26.7494 | |
+| model_jrc10 | missed_flood | 1.287 | 86.997 | 26.6144 | |
+| model_jrc10 | false_flood | 0.906 | 86.9765 | 26.5665 | |
+| model_jrc10 | missed_flood | 0.824 | 87.0222 | 26.6542 | |
+| model_jrc10 | false_flood | 0.79 | 86.4984 | 26.5791 | |
+| model_jrc10 | false_flood | 0.727 | 86.8734 | 26.4971 | |
+| model_jrc10 | false_flood | 0.726 | 86.8774 | 26.4626 | |
 | change_otsu | false_flood | 0.627 | 87.0638 | 26.717 | |
 | change_otsu | false_flood | 0.558 | 87.0892 | 26.7506 | |
 | change_otsu | false_flood | 0.454 | 86.9138 | 26.4965 | |
