@@ -71,6 +71,15 @@ ensemble; no epoch after the resume beat it. The resume overwrote
 `$DATA_ROOT/checkpoints/E6-s3/config.yaml`, which now shows 8 × 2; the original settings are
 in the MLflow params of run E6-s3.
 
+### E2 retrained on this laptop
+
+The original E2 forests (`forest.joblib`) were not saved, and E7 needs them as an input. E2 was
+retrained on this laptop on 26 November 2026 with the same config (`configs/E2.yaml`) and seeds
+(0, 1, 2), then re-scored with `scripts/evaluate.py`. Every overall IoU (3 seeds × s11_test and
+s11_bolivia) matches the earlier numbers to four decimals (largest difference 0.0000; the
+acceptance limit was 0.005), so `docs/results/level1/E2.json` was replaced by the new run; only
+its `git_commit` field changed (`unknown` before). E7 uses these retrained forests.
+
 ## To run on the laptop GPU
 
 E0 (needs the ETCI images), E4 to E6 (3 seeds each), the E6 ensemble (5 members) and E7 fusion:

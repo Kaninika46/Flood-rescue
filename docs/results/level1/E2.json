@@ -3,7 +3,7 @@
  "description": "Random forest, balanced pixel sample from s11_train, tuned on s11_val",
  "method": "random_forest",
  "threshold": 0.5,
- "git_commit": "unknown",
+ "git_commit": "58cd4124dde6fb55b51ff1b52ea9197440bf4dcd",
  "smoke": false,
  "summary": {
   "default": {
