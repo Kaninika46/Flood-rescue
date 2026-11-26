@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import math
+import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +16,7 @@ from rasterio.crs import CRS
 from rasterio.warp import transform as warp_points
 
 from src.common.raster import write_raster
+from src.level1_radar import terrain
 from src.level1_radar.terrain import (
     Grid,
     slope_degrees,
@@ -98,3 +101,106 @@ def test_buffered_grid() -> None:
     big = grid.buffered(1)
     assert (big.height, big.width) == (7, 6)
     assert big.transform @ (1, 1) == grid.transform @ (0, 0)
+
+
+# --- local tiles, downloads and atomic writes (no network) ---------------------------------
+
+
+def _small_grid() -> terrain.Grid:
+    return terrain.Grid(CRS.from_epsg(4326), Affine(0.001, 0, 86.2, 0, -0.001, 26.8), 100, 100)
+
+
+def test_local_tile_is_used_without_network(tmp_path: Path, monkeypatch) -> None:
+    def no_network(url: str) -> bool:
+        raise AssertionError(f"network used for {url}")
+
+    monkeypatch.setattr(terrain, "remote_exists", no_network)
+    url = terrain.tile_urls("hand", _small_grid())[0]
+    local = terrain.local_tile_path(tmp_path, "hand", url)
+    local.parent.mkdir(parents=True)
+    local.write_bytes(b"tile")
+    assert terrain.tile_sources("hand", _small_grid(), local_dir=tmp_path) == [str(local)]
+
+
+def test_missing_local_tile_is_streamed(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(terrain, "remote_exists", lambda url: True)
+    sources = terrain.tile_sources("dem", _small_grid(), local_dir=tmp_path)
+    assert sources and all(s.startswith("/vsicurl/https://") for s in sources)
+
+
+class _FakeResponse:
+    def __init__(self, body: bytes, length: int) -> None:
+        self._body, self.headers = io.BytesIO(body), {"Content-Length": str(length)}
+
+    def read(self, n: int = -1) -> bytes:
+        return self._body.read(n)
+
+    def __enter__(self) -> _FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+
+class _FakeServer:
+    """Answers HEAD and Range requests for ``body``; the listed request numbers come back short."""
+
+    def __init__(self, body: bytes, short_requests: set[int] = frozenset()) -> None:
+        self.body, self.short, self.ranges = body, set(short_requests), []
+
+    def __call__(self, request: urllib.request.Request, timeout: float) -> _FakeResponse:
+        if request.get_method() == "HEAD":
+            return _FakeResponse(b"", len(self.body))
+        start, end = map(int, request.get_header("Range").removeprefix("bytes=").split("-"))
+        self.ranges.append((start, end))
+        piece = self.body[start : end + 1]
+        if len(self.ranges) in self.short:
+            piece = piece[: len(piece) // 2]  # connection dropped mid-piece
+        return _FakeResponse(piece, len(piece))
+
+
+def test_download_in_pieces_retries_a_short_piece(tmp_path: Path, monkeypatch) -> None:
+    body = bytes(range(256)) * 40  # 10240 bytes
+    server = _FakeServer(body, short_requests={2})
+    monkeypatch.setattr(terrain.urllib.request, "urlopen", server)
+    dest = tmp_path / "HAND" / "tile.tif"
+    out = terrain.download_file("https://example/tile.tif", dest, delay_s=0, piece_bytes=4096)
+    assert out == dest and dest.read_bytes() == body
+    assert server.ranges == [(0, 4095), (4096, 8191), (4096, 8191), (8192, 10239)]
+    assert not list(tmp_path.rglob("*.part"))
+
+
+def test_download_resumes_from_part_file(tmp_path: Path, monkeypatch) -> None:
+    body = bytes(range(256)) * 40
+    dest = tmp_path / "tile.tif"
+    (tmp_path / "tile.tif.part").write_bytes(body[:5000])  # left by an interrupted run
+    server = _FakeServer(body)
+    monkeypatch.setattr(terrain.urllib.request, "urlopen", server)
+    terrain.download_file("https://example/tile.tif", dest, delay_s=0, piece_bytes=4096)
+    assert dest.read_bytes() == body
+    assert server.ranges[0] == (5000, 9095)
+
+
+def test_download_gives_up_and_leaves_no_final_file(tmp_path: Path, monkeypatch) -> None:
+    server = _FakeServer(b"x" * 100, short_requests={1, 2})
+    monkeypatch.setattr(terrain.urllib.request, "urlopen", server)
+    dest = tmp_path / "tile.tif"
+    with pytest.raises(ConnectionError):
+        terrain.download_file("https://example/tile.tif", dest, retries=2, delay_s=0)
+    assert not dest.exists()
+
+
+def test_terrain_rasters_written_atomically(tmp_path: Path, monkeypatch) -> None:
+    scene = tmp_path / "scene.tif"
+    grid = _small_grid()
+    write_raster(
+        scene,
+        np.zeros((1, grid.height, grid.width), np.float32),
+        crs=grid.crs,
+        transform=grid.transform,
+    )
+    monkeypatch.setattr(
+        terrain, "hand_for_grid", lambda g, c=None: np.ones((g.height, g.width), np.float32)
+    )
+    out = terrain.write_terrain_rasters(scene, tmp_path / "out", block=64, kinds=("hand",))
+    assert out["hand"].exists() and not list((tmp_path / "out").glob("*.part"))

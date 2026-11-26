@@ -12,8 +12,11 @@
     # PNG: S1 VH, label and HAND side by side for three chips
     python scripts/prepare_hand.py figure Bolivia_103757 India_1018327 Sri-Lanka_120804
 
-Tiles are streamed from the public buckets; add ``--cache-dir $DATA_ROOT/terrain_tiles`` to keep
-whole tiles locally when the same area is processed many times.
+    # download the HAND and DEM tiles under a raster once (later runs read them from disk)
+    python scripts/prepare_hand.py tiles $DATA_ROOT/nepal/s1/S1_20240927.tif
+
+Tiles found in ``$DATA_ROOT/terrain_tiles`` are read from disk; others are streamed from the
+public buckets (with HTTP timeouts and retries). ``--cache-dir`` downloads every tile used.
 """
 
 from __future__ import annotations
@@ -32,7 +35,9 @@ from src.common.logging import get_logger
 from src.common.raster import read_raster, write_raster
 from src.level1_radar.s11 import read_split
 from src.level1_radar.terrain import (
+    LOCAL_TILE_DIR,
     Grid,
+    download_tiles,
     hand_for_grid,
     slope_for_grid,
     write_terrain_rasters,
@@ -100,6 +105,18 @@ def chips(
             done += 1
             if done % 50 == 0 or done == len(jobs):
                 log.info("%d / %d chips done", done, len(jobs))
+
+
+@app.command()
+def tiles(
+    path: Path = typer.Argument(..., help="Any GeoTIFF; downloads the tiles under its grid."),
+    tile_dir: Path = typer.Option(None, help="Default: $DATA_ROOT/terrain_tiles"),
+) -> None:
+    """Download the HAND and DEM tiles under a raster, so later runs read them from disk."""
+    target = tile_dir or data_path(LOCAL_TILE_DIR)
+    for kind, paths in download_tiles(path, target).items():
+        size_mb = sum(p.stat().st_size for p in paths) / 1e6
+        log.info("%s: %d tiles, %.0f MB in %s", kind.upper(), len(paths), size_mb, target)
 
 
 @app.command()

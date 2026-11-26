@@ -134,15 +134,24 @@ def sample_values(path: Path, band: int, n_blocks: int = 40, per_block: int = 50
 
 
 def step_terrain(cfg: dict[str, Any], overwrite: bool) -> None:
-    """HAND and slope on the post scene grid."""
+    """HAND and slope on the post scene grid (each skipped if it already exists).
+
+    Run ``python scripts/prepare_hand.py tiles <post scene>`` first to read the terrain tiles
+    from disk instead of streaming them.
+    """
     from src.level1_radar.terrain import write_terrain_rasters
 
     post, _ = scenes(cfg)
     out_dir = data_path(cfg["paths"]["terrain_dir"])
-    if (out_dir / f"{post.stem}_HAND.tif").exists() and not overwrite:
+    kinds = tuple(
+        k
+        for k in ("hand", "slope")
+        if overwrite or not (out_dir / f"{post.stem}_{k.upper()}.tif").exists()
+    )
+    if not kinds:
         log.info("terrain exists, skipping")
         return
-    write_terrain_rasters(post, out_dir)
+    write_terrain_rasters(post, out_dir, kinds=kinds)
 
 
 def step_predict(cfg: dict[str, Any], overwrite: bool) -> None:
