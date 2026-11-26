@@ -61,8 +61,10 @@ EXPERIMENT_DESCRIPTIONS = {
     "E2": "Random forest",
     "E3": "ETCI U-Net, no retraining",
     "E4": "Fine-tuned on hand labels",
+    "E4_patience10": "E4, patience 10, superseded (final E4 trains all 60 epochs)",
     "E5": "E4 + pseudo-labels",
     "E6": "E5 + HAND channel",
+    "E6ens": "Ensemble of 5 E6 models (4 seeds + ResNet-34)",
     "E7": "Fusion of E1, E2, E6",
     "S0": "SpaceNet 8 baseline, 85/15 split",
     "S1": "Train Louisiana-East, test Germany",
@@ -106,15 +108,27 @@ def exp_key(name: str) -> tuple[str, int, str]:
 # --------------------------------------------------------------------------- level 1
 
 
+def level1_row_name(path: Path, experiment: str) -> str:
+    """Row name of one result file: the experiment ID when the file is named after it
+    (``E4.json``), otherwise the file name (``E4_patience10.json`` -> ``E4_patience10``).
+
+    Several files may carry the same ``experiment`` (an earlier, superseded run kept for the
+    record); keying rows by file name keeps them apart instead of letting the file read last
+    overwrite the final run.
+    """
+    return experiment if path.stem == experiment else path.stem
+
+
 def level1_from_files(folder: Path) -> dict[tuple[str, str], dict[tuple[str, str], Cell]]:
-    """{(experiment, variant): {(split, metric): Cell}} from evaluate.py result files."""
+    """{(row name, variant): {(split, metric): Cell}} from evaluate.py result files."""
     out: dict[tuple[str, str], dict[tuple[str, str], Cell]] = {}
     for path in sorted(folder.glob("*.json")):
         data = json.loads(path.read_text(encoding="utf-8"))
         if data.get("smoke"):
             continue
+        name = level1_row_name(path, data["experiment"])
         for variant, splits in data.get("summary", {}).items():
-            row = out.setdefault((data["experiment"], variant), {})
+            row = out.setdefault((name, variant), {})
             for split, metrics in splits.items():
                 for metric, s in metrics.items():
                     row[split, metric] = Cell(s["mean"], s["std"], s["n_seeds"])
@@ -146,7 +160,9 @@ def level1_table(data: Mapping[tuple[str, str], Mapping[tuple[str, str], Cell]])
     for exp, variant in sorted(data, key=lambda k: (exp_key(k[0]), k[1])):
         cells = data[exp, variant]
         seeds = max((c.n for c in cells.values()), default=0)
-        what = EXPERIMENT_DESCRIPTIONS.get(re.sub(r"[a-z]+$", "", exp), "")
+        what = EXPERIMENT_DESCRIPTIONS.get(exp) or EXPERIMENT_DESCRIPTIONS.get(
+            re.sub(r"[a-z]+$", "", exp), ""
+        )
         if exp.endswith("sa"):
             what += " (South Asia hold-out training)"
         rows.append(

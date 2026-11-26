@@ -17,6 +17,12 @@ Built by `scripts/make_report_tables.py --source files`. Mean ± standard deviat
 | E2 | Random forest |  | 0.635 ± 0.000 | 0.622 ± 0.003 | n/a | 0.776 ± 0.000 | 0.825 ± 0.002 | 0.733 ± 0.002 | 3 |
 | E2sa | Random forest (South Asia hold-out training) |  | n/a | n/a | 0.546 ± 0.000 | n/a | n/a | n/a | 3 |
 | E3 | ETCI U-Net, no retraining |  | 0.607 | 0.672 | 0.512 | 0.756 | 0.729 | 0.785 | 1 |
+| E4 | Fine-tuned on hand labels |  | 0.658 ± 0.008 | 0.655 ± 0.028 | n/a | 0.794 ± 0.006 | 0.832 ± 0.011 | 0.759 ± 0.007 | 3 |
+| E4_patience10 | E4, patience 10, superseded (final E4 trains all 60 epochs) |  | 0.649 ± 0.014 | 0.566 ± 0.149 | n/a | 0.787 ± 0.010 | 0.843 ± 0.012 | 0.739 ± 0.027 | 3 |
+| E5 | E4 + pseudo-labels |  | 0.663 ± 0.009 | 0.607 ± 0.073 | n/a | 0.797 ± 0.007 | 0.864 ± 0.009 | 0.740 ± 0.005 | 3 |
+| E6 | E5 + HAND channel |  | 0.667 ± 0.004 | 0.681 ± 0.006 | n/a | 0.801 ± 0.003 | 0.864 ± 0.003 | 0.746 ± 0.004 | 3 |
+| E6ens | Ensemble of 5 E6 models (4 seeds + ResNet-34) |  | 0.669 | 0.684 | n/a | 0.802 | 0.866 | 0.747 | 1 |
+| E7 | Fusion of E1, E2, E6 |  | 0.667 ± 0.001 | 0.687 ± 0.003 | n/a | 0.800 ± 0.001 | 0.850 ± 0.000 | 0.756 ± 0.001 | 3 |
 
 ## Level 2: road-level flood map (SpaceNet 8 scoring)
 
@@ -24,4 +30,24 @@ _No results yet._
 
 ## System (Koshi replay)
 
-_No results yet._
+| Metric | Value |
+|---|---|
+| Scene | S1_20240927.tif |
+| GPU | NVIDIA GeForce RTX 4060 Laptop GPU, 8.0 GB, compute 8.9 |
+| Minutes: level1 | 2.58 |
+| Minutes: mask | 0.12 |
+| Minutes: depth | 0.30 |
+| Minutes: level2 | 0.00 |
+| Minutes: roads | 1.24 |
+| Minutes: priority | 0.21 |
+| Minutes: alert | 0.00 |
+| Minutes: image to alert draft | 4.46 |
+| Demo route time (car), min | 55.4 |
+| Demo route time (truck), min | 69.3 |
+| Demo route time (foot), min | 366.2 |
+| Route length through water above the car limit, m | 0 |
+| Route length through water above the truck limit, m | 0 |
+| Route length through water above the foot limit, m | 0 |
+| Road edges: dry | 43904 |
+| Road edges: flooded | 90 |
+| Road edges: verify | 2955 |

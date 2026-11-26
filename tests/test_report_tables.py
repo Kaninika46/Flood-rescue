@@ -98,3 +98,23 @@ def test_level2_and_system(tmp_path: Path) -> None:
     assert ["Minutes: image to alert draft", "4.00"] in rows
     assert ["Demo route time (boat), min", "no safe route"] in rows
     assert markdown(rows).startswith("| Metric | Value |")
+
+
+def test_level1_files_with_duplicate_experiment_names(tmp_path: Path) -> None:
+    """Two files with experiment "E4": the final run keeps row E4, the other gets its own row."""
+
+    def summary(iou: float) -> dict:
+        return {"default": {"s11_test": {"iou": {"mean": iou, "std": 0.0, "n_seeds": 3}}}}
+
+    (tmp_path / "E4.json").write_text(json.dumps({"experiment": "E4", "summary": summary(0.658)}))
+    (tmp_path / "E4_patience10.json").write_text(
+        json.dumps({"experiment": "E4", "summary": summary(0.649)})
+    )
+    data = level1_from_files(tmp_path)
+    assert set(data) == {("E4", "default"), ("E4_patience10", "default")}
+    assert math.isclose(data["E4", "default"]["s11_test", "iou"].mean, 0.658)
+    rows = {r[0]: r for r in level1_table(data)[1:]}
+    assert rows["E4"][3] == "0.658 ± 0.000"
+    assert rows["E4_patience10"][3] == "0.649 ± 0.000"
+    assert "superseded" in rows["E4_patience10"][1]
+    assert [r[0] for r in level1_table(data)[1:]] == ["E4", "E4_patience10"]
