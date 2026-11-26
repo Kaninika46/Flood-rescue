@@ -86,6 +86,8 @@ venv/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+# osmnx Overpass response cache (osmnx default cache_folder ./cache)
+/cache/
 .coverage
 htmlcov/
 .ipynb_checkpoints/
