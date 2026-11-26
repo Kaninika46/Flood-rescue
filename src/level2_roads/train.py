@@ -147,6 +147,9 @@ def run_epoch(
     model.train(training)
     total, count = 0.0, 0
     n = len(loader) if not max_batches else min(max_batches, len(loader))
+    phase = "training" if training else "validation"
+    started = time.perf_counter()
+    next_report = started + 15
     if training:
         optimizer.zero_grad(set_to_none=True)
     for i, batch in enumerate(loader):
@@ -172,6 +175,19 @@ def run_epoch(
             update_scorers(task, outputs, batch, scorers)
         total += loss.item()
         count += 1
+        now = time.perf_counter()
+        if now >= next_report and count < n:
+            rate = count / (now - started)
+            log.info(
+                "%s batches %d/%d (%.1f%%), %.2f batches/s, ETA ~%.0fs",
+                phase,
+                count,
+                n,
+                100 * count / n,
+                rate,
+                (n - count) / rate,
+            )
+            next_report = now + 15
     return total / max(1, count)
 
 
@@ -246,6 +262,7 @@ def main(
         save_config_to=out / "config.yaml",
     ) as run:
         for epoch in range(start_epoch, epochs):
+            log.info("%s: starting epoch %d/%d", task, epoch + 1, epochs)
             start = time.perf_counter()
             loader = DataLoader(
                 train_ds,
@@ -318,7 +335,14 @@ def main(
             )
             tmp.replace(last_path)
             log.info(
-                "epoch %d: train %.4f val %.4f (best %.4f)", epoch, train_loss, val_loss, best_loss
+                "%s: epoch %d/%d complete, train %.4f val %.4f (best %.4f), %.1fs",
+                task,
+                epoch + 1,
+                epochs,
+                train_loss,
+                val_loss,
+                best_loss,
+                time.perf_counter() - start,
             )
         run.log_summary({"val/best_loss": best_loss})
 

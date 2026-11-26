@@ -25,7 +25,7 @@ So the scoring code works; the numbers below come from trained models.
 
 | ID | What | Split | APLS | Building IoU | Flooded road recall (length) |
 |---|---|---|---|---|---|
-| S0 | baseline, 85/15 split | sn8_val | | | |
+| S0 | baseline, 85/15 split | sn8_val | 0.1729 | 0.5045 | 0.1950 |
 | S1 | train Louisiana-East, test Germany | sn8_cross_test | | | |
 | S2 | S0 + SpaceNet 5 road weights (`docs/S2_notes.md`) | sn8_val | | | |
 | S3 | S2 + cloud mask + ensemble confidence | sn8_val | | | |

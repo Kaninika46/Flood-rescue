@@ -142,6 +142,8 @@ def train_one_epoch(
     optimizer.zero_grad(set_to_none=True)
     total, count = 0.0, 0
     n_batches = len(loader) if not max_batches else min(max_batches, len(loader))
+    started = time.perf_counter()
+    next_report = started + 15
     for i, batch in enumerate(loader):
         if max_batches and i >= max_batches:
             break
@@ -170,6 +172,19 @@ def train_one_epoch(
             scheduler.step()
         total += loss.item() * image.shape[0]
         count += image.shape[0]
+        now = time.perf_counter()
+        if now >= next_report and not last_batch:
+            batches_done = i + 1
+            rate = batches_done / (now - started)
+            log.info(
+                "training batches %d/%d (%.1f%%), %.2f batches/s, ETA ~%.0fs",
+                batches_done,
+                n_batches,
+                100 * batches_done / n_batches,
+                rate,
+                (n_batches - batches_done) / rate,
+            )
+            next_report = now + 15
     return total / max(1, count)
 
 
@@ -308,6 +323,7 @@ def main(
             raise ValueError("effective batch size mismatch")
         epoch = start_epoch - 1  # stays so if a resumed run has nothing left to do
         for epoch in range(start_epoch, epochs):
+            log.info("starting epoch %d/%d", epoch + 1, epochs)
             start = time.perf_counter()
             loader = DataLoader(
                 train_ds,
@@ -371,11 +387,13 @@ def main(
                 last_path,
             )
             log.info(
-                "epoch %d: loss %.4f val IoU %.4f (best %.4f)%s",
-                epoch,
+                "epoch %d/%d complete: loss %.4f val IoU %.4f (best %.4f), %.1fs%s",
+                epoch + 1,
+                epochs,
                 train_loss,
                 val.iou,
                 best_iou,
+                time.perf_counter() - start,
                 " *" if improved else "",
             )
             if bad_epochs >= patience:

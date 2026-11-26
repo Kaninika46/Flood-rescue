@@ -49,6 +49,8 @@ dependencies:
   - typer
   - wandb
   - mlflow-skinny
+  - sqlalchemy=2          # SQLite experiment tracking
+  - alembic<2
   - pytest
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/cu128
