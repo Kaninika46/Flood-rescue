@@ -5,8 +5,8 @@
 
 Needs the Level 1 replay outputs (``scripts/nepal_level1.py``) and the road graph
 (``scripts/route_demo.py graph``). Writes ``$DATA_ROOT/nepal/priority/{exposure,priorities}``
-GeoJSON/CSV and ``docs/exposure.md`` (our total vs UNOSAT's about 19,000 exposed people, and why
-they differ).
+GeoJSON/CSV and ``docs/exposure.md`` (our total vs UNOSAT's exposed-people estimate for the same
+date, ``unosat_exposed_reference`` in configs/priority.yaml, and why they differ).
 """
 
 from __future__ import annotations
@@ -132,14 +132,16 @@ def write_report(exposure: object, ranked: object, cfg: dict) -> None:
         "",
         f"- Flooded area inside the analysed local levels: **{flooded:.1f} km^2**",
         f"- Exposed people (our estimate): **{total:,.0f}**",
-        f"- UNOSAT estimate: about **{ref:,}** ({total / ref:.0%} of it)",
+        f"- UNOSAT estimate, same date: **{ref:,}** ({total / ref:.0%} of it). Analysis: UNOSAT",
         "",
         "## Why the numbers differ",
         "",
         "- **Population layer.** We use WorldPop 100 m constrained (people placed only in mapped "
-        "buildings); UNOSAT products often use another layer or year.",
+        "buildings); UNOSAT used WorldPop unconstrained UN-adjusted 2020 (100 m), which also puts "
+        "people in unbuilt cells.",
         "- **Flood extent.** Our map is the U-Net ensemble without permanent water; UNOSAT draws "
-        "its extent from its own satellite analysis, possibly from a different time of day.",
+        "its extent from its own Sentinel-1 analysis of the same date, against its own "
+        "11 June 2024 reference water.",
         "- **Counting rule.** A 100 m cell counts as flooded only when at least half of it is "
         "flooded (`majority`); `fraction` counts partial cells proportionally.",
         "- **Area.** Only local levels inside `analysis_bbox` are counted.",

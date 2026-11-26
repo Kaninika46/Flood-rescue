@@ -35,7 +35,7 @@ reached, run. GPU training and the Earth Engine download happen on your laptop.
 | A7 | E5 pseudo-labels, E6 HAND channel | code done; GPU |
 | A8 | Ensemble prediction (probability + confidence GeoTIFFs), E7 fusion | code done; GPU |
 | A9 | FwDET depth (NumPy port, GPL-2.0) | done; PeeDee check needs `git lfs pull` |
-| A10 | Nepal radar replay vs UNOSAT | code done; needs your Earth Engine export |
+| A10 | Nepal radar replay vs UNOSAT | code done for both post dates (27 Sep, 1 Oct), each against UNOSAT FL20240928NPL of the same date; S1 exported, UNOSAT saved; run after the E6 ensemble |
 | B1 to B4 | SpaceNet 8 env, data, S0 training, evaluation chain + APLS, S1 | done; scoring checked on ground truth (APLS 0.896); training on GPU |
 | B5 | S2: SpaceNet 5 road weights (`docs/S2_notes.md`) | code done; 98 MB download + GPU |
 | B6 | S3: cloud mask + ensemble confidence | code done; GPU |
@@ -276,8 +276,8 @@ python -m src.level1_radar.fusion --config configs/E7.yaml --seed 0
 python scripts/evaluate.py --config configs/E7.yaml
 ```
 
-Depth and the Nepal replay (Earth Engine export first, then UNOSAT polygons saved by hand in
-`$DATA_ROOT/nepal/unosat/`):
+Depth and the Nepal replay (Earth Engine export first, then the UNOSAT product FL20240928NPL
+unzipped by hand into `$DATA_ROOT/nepal/unosat/`; credit "Analysis: UNOSAT"):
 
 ```bash
 python scripts/compare_fwdet_peedee.py
@@ -299,6 +299,13 @@ python scripts/nepal_s1_download.py mosaic
 ```bash
 python scripts/nepal_level1.py run
 ```
+
+`run` handles every post date in `dates.post` (`--date 2024-10-01` for one). Each scene is
+compared with the UNOSAT flood layer whose file name has the same date, inside that date's UNOSAT
+analysis extent, with JRC permanent water left out of both maps (the product has no
+permanent-water layer). Results are given for the whole extent inside our scene and for its Nepal
+part (the extents cover India too): `docs/results/nepal_level1_<YYYYMMDD>.json` and
+`docs/nepal_level1.md`. The 1 October scene reuses the 27 September HAND and slope (same grid).
 
 ### B. Roads (Level 2) and safe routes
 

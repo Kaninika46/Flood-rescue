@@ -40,7 +40,7 @@ Wi-Fi, app open, server address set to the laptop. Pick the Koshi scene in the h
 
 | Time | Show | Say |
 |---|---|---|
-| 0:00 | Dashboard, whole Koshi area | "27 September 2024: the Koshi barrage released record flows; UNOSAT estimated about 19,000 people exposed. This is a replay of that day with open data." |
+| 0:00 | Dashboard, whole Koshi area | "27 September 2024: the Koshi barrage released record flows; UNOSAT estimated about 17,000 people exposed that day (Analysis: UNOSAT). This is a replay of that day with open data." |
 | 0:45 | Header: scene name and "image to alert draft: N min" | "A new Sentinel-1 radar scene arrives (radar sees through clouds). One command runs everything; each step is timed." Name the slowest step. |
 | 1:30 | **Flood probability** layer on, confidence on | "Level 1: an ensemble of U-Nets trained on Sen1Floods11 plus HAND terrain. Blue is water. Orange hatching is where the ensemble members disagree: we never hide that, we mark it **verify**." Quote the Level 1 test IoU from `docs/results_tables.md`. |
 | 3:00 | Probability off, **water depth** on | "Depth from the flood edge and the elevation model (a NumPy port of FwDET). Darker is deeper; it decides which vehicle can pass." |

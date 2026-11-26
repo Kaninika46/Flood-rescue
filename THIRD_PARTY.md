@@ -31,5 +31,6 @@ the copy.
 | Maxar Open Data | `https://maxar-opendata.s3.amazonaws.com/events/catalog.json` | CC BY-NC 4.0: academic use only, credit Maxar |
 | OpenStreetMap | Overpass via OSMnx | ODbL, credit "© OpenStreetMap contributors" |
 | WorldPop | worldpop.org (Nepal, 100 m) | CC BY 4.0 |
+| UNOSAT FL20240928NPL | UNOSAT flood product, Koshi and Madhesh (Sentinel-1 water extent 27 Sep and 1 Oct 2024, analysis extents, population-exposure table, A3 map); saved by hand in `$DATA_ROOT/nepal/unosat/` | Reference only, not redistributed. Credit **"Analysis: UNOSAT"** wherever it is shown or compared |
 | Sentinel-1 | Google Earth Engine `COPERNICUS/S1_GRD` | Copernicus Sentinel data terms |
 | OASIS CAP 1.2 schema | `tests/data/CAP-v1.2.xsd` | OASIS (copied verbatim for validation) |

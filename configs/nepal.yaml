@@ -26,12 +26,25 @@ paths:                      # all relative to $DATA_ROOT
   s1_dir: nepal/s1          # S1_<post>.tif + S1_<post>_pre.tif (VV, VH in dB) after mosaic
   jrc: nepal/s1/JRC_occurrence.tif
   terrain_dir: nepal/terrain
+  admin: nepal/admin/npl_local_levels.geojson   # Nepal outline (union) for the Nepal-only comparison
   level1_dir: nepal/level1
-  unosat_dir: nepal/unosat  # UNOSAT flood extent polygons for 27 Sep 2024 (download by hand)
+  unosat_dir: nepal/unosat  # UNOSAT FL20240928NPL shapefiles (searched recursively; download by hand)
 model:
   config: configs/E6ens.yaml   # the Level 1 ensemble used for the replay
   threshold: 0.5
 permanent_water_occurrence: 50   # JRC occurrence (%) above which water is "normal", not flood
+unosat:
+  # UNOSAT product FL20240928NPL (Sentinel-1, 10 m), published 2 Oct 2024. Credit: "Analysis: UNOSAT".
+  # Each post date is compared with the UNOSAT layers whose FILE NAME has the same date, inside that
+  # date's analysis extent, with JRC permanent water (above) removed from both maps: the product has
+  # no permanent-water layer (UNOSAT's own reference water is Sentinel-1 of 11 June 2024, not supplied).
+  # The shapefile extents also cover India; `reference` below is UNOSAT's Nepal-only table
+  # (UNOSAT_Population_Exposure_FL20240928NPL_01Oct2024.xlsx), used to check our rasterised copy.
+  credit: "Analysis: UNOSAT"
+  product: FL20240928NPL
+  reference:
+    "2024-09-27": {acquired_utc: "00:11", analysed_km2: 6139, flood_km2: 41.06, exposed: 17317}
+    "2024-10-01": {acquired_utc: "12:14", analysed_km2: 6139, flood_km2: 55, exposed: 17794}
 change_otsu:
   min_drop_db: 3.0
   max_hand_m: 15.0
