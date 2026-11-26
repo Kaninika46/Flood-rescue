@@ -13,7 +13,9 @@ admin:
   name_field: shapeName
 facilities:
   path: nepal/osm/facilities.geojson    # OSM amenity=hospital|clinic + place=city|town
-flood_mask: nepal/level1/S1_20240927_model_mask.tif
+# (b) new water (post and not pre, minus JRC >= 50 %) from scripts/nepal_level1.py, so the normal
+# river channel is not counted as exposed; (a) all water is S1_20240927_model_mask.tif
+flood_mask: nepal/level1/S1_20240927_model_new_mask.tif
 std: nepal/level1/S1_20240927_flood_std.tif
 threshold: 0.5
 method: majority            # or fraction (see src/priority/exposure.py)

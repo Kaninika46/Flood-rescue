@@ -54,7 +54,7 @@ from src.level1_radar.terrain import iter_windows
 log = get_logger("nepal_level1")
 app = typer.Typer(add_completion=False, help=__doc__)
 STEPS = ("terrain", "predict", "masks", "depth", "compare")
-METHODS = ("model", "change_otsu", "otsu")
+METHODS = ("model", "model_new", "change_otsu", "otsu")
 BLOCK = 4096
 
 
@@ -187,29 +187,61 @@ def step_terrain(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
 
 
 def step_predict(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
-    """Ensemble flood probability and confidence."""
+    """Ensemble flood probability and confidence for the post scene and its pre scene.
+
+    The pre scene (same relative orbit, same grid) gets the same model and the post scene's
+    terrain, for the ``model_new`` (new water) mask.
+    """
     from src.level1_radar.predict import Ensemble, member_paths, predict_scene
 
-    post, _ = scenes(cfg, day)
+    post, pre = scenes(cfg, day)
     out_dir = data_path(cfg["paths"]["level1_dir"])
-    if (out_dir / f"{post.stem}_flood_prob.tif").exists() and not overwrite:
-        log.info("prediction exists, skipping")
+    todo = [
+        s
+        for s in (post, pre)
+        if s is not None and (overwrite or not (out_dir / f"{s.stem}_flood_prob.tif").exists())
+    ]
+    if pre is None:
+        log.warning("no pre scene for %s: the new-water mask is skipped", day)
+    if not todo:
+        log.info("predictions exist, skipping")
         return
     model_cfg = load_config(repo_root() / cfg["model"]["config"])
     ensemble = Ensemble.from_checkpoints(member_paths(model_cfg))
     terrain = {c: terrain_file(cfg, post, c) for c in ensemble.channels if c in ("HAND", "SLOPE")}
-    predict_scene(ensemble, post, out_dir, terrain)
+    for scene in todo:
+        if scene is pre and not _same_grid(pre, post):
+            raise typer.Exit(f"{pre.name} is not on the grid of {post.name}")
+        log.info("predicting %s", scene.name)
+        predict_scene(ensemble, scene, out_dir, terrain)
 
 
 def step_masks(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
-    """Write the three flood masks (uint8 1 flood / 0 dry / 255 no data)."""
+    """Write the flood masks (uint8 1 flood / 0 dry / 255 no data), one per available method.
+
+    ``model``: post probability >= threshold (all water). ``model_new``: water in post and not in
+    pre (``src/level1_radar/new_water.py``); no data where the pre scene has none. JRC permanent
+    water is removed from every mask.
+    """
+    from src.level1_radar.new_water import new_water
+
     post, pre = scenes(cfg, day)
     out_dir = data_path(cfg["paths"]["level1_dir"])
-    outs = {m: out_dir / f"{post.stem}_{m}_mask.tif" for m in METHODS}
+    prob_path = out_dir / f"{post.stem}_flood_prob.tif"
+    pre_prob_path = out_dir / f"{pre.stem}_flood_prob.tif" if pre is not None else None
+    available = {
+        "model": prob_path.exists(),
+        "model_new": prob_path.exists() and pre_prob_path is not None and pre_prob_path.exists(),
+        "change_otsu": pre is not None,
+        "otsu": True,
+    }
+    outs = {m: out_dir / f"{post.stem}_{m}_mask.tif" for m in METHODS if available[m]}
+    for m in METHODS:
+        if not available[m]:
+            log.warning("%s mask skipped for %s (missing inputs)", m, day)
     if all(p.exists() for p in outs.values()) and not overwrite:
         log.info("masks exist, skipping")
         return
-    prob_path = out_dir / f"{post.stem}_flood_prob.tif"
     hand_path = terrain_file(cfg, post, "hand")
     jrc_path = data_path(cfg["paths"]["jrc"])
     vh_threshold = otsu_threshold(sample_values(post, 2))
@@ -240,8 +272,15 @@ def step_masks(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
                 permanent = np.zeros(no_data.shape, bool) if jrc is None else (jrc >= occ_limit)
                 hand = read_aligned(hand_path, src, window) if hand_path.exists() else None
                 masks: dict[str, np.ndarray] = {}
-                if prob_path.exists():
-                    masks["model"] = read_aligned(prob_path, src, window) >= threshold
+                extra_no_data: dict[str, np.ndarray] = {}
+                if "model" in outs:
+                    prob = read_aligned(prob_path, src, window)
+                    with np.errstate(invalid="ignore"):
+                        masks["model"] = prob >= threshold
+                    if "model_new" in outs:
+                        masks["model_new"], extra_no_data["model_new"] = new_water(
+                            prob, read_aligned(pre_prob_path, src, window), threshold
+                        )
                 with np.errstate(invalid="ignore"):
                     masks["otsu"] = vv_vh[1] < vh_threshold
                     if change_threshold is not None:
@@ -251,10 +290,10 @@ def step_masks(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
                             change &= ~(hand > max_hand)
                         masks["change_otsu"] = change
                 for method, dst in dsts.items():
-                    if method not in masks:
-                        continue
                     out = (masks[method] & ~permanent).astype(np.uint8)
                     out[no_data] = 255
+                    if method in extra_no_data:
+                        out[extra_no_data[method] & ~no_data] = 255
                     dst.write(out[None], window=window)
         finally:
             for dst in dsts.values():
@@ -309,6 +348,8 @@ def _components(mask: np.ndarray, area_row: np.ndarray, top: int) -> list[tuple[
 
 
 REGIONS = ("unosat_extent", "nepal")
+# JRC occurrence (%) bins for the false-flood breakdown (below the permanent-water limit)
+JRC_BINS = {"never water (0)": (0, 1), "rare (1-9)": (1, 10), "seasonal (10-49)": (10, 50)}
 REGION_NOTES = {
     "unosat_extent": "UNOSAT analysis extent of the same date, inside our scene",
     "nepal": "the same, clipped to Nepal (the extent polygons also cover India)",
@@ -368,6 +409,7 @@ def step_compare(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
     unosat_area_with_jrc = dict.fromkeys(names, 0.0)
     analysed_area = dict.fromkeys(names, 0.0)
     patches: dict[str, list] = {m: [] for m in METHODS}
+    false_by_jrc = {m: dict.fromkeys(JRC_BINS, 0.0) for m in METHODS}
     mask_paths = {m: out_dir / f"{post.stem}_{m}_mask.tif" for m in METHODS}
     mask_paths = {m: p for m, p in mask_paths.items() if p.exists()}
     if not mask_paths:
@@ -385,7 +427,8 @@ def step_compare(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
             inside &= rasterize_geometries(extent_g, shape, wt)
             if not inside.any():
                 continue
-            permanent = read_aligned(jrc_path, src, window, resampling="nearest") >= occ_limit
+            jrc = read_aligned(jrc_path, src, window, resampling="nearest")
+            permanent = jrc >= occ_limit
             ref = rasterize_geometries(flood_g, shape, wt)
             # each region with and without permanent water (the latter only to report areas)
             with_jrc = {"unosat_extent": inside}
@@ -411,6 +454,9 @@ def step_compare(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
                     area[(r, m)] += km2(p)
                     if r != "unosat_extent":
                         continue
+                    for label, (lo, hi) in JRC_BINS.items():
+                        in_bin = p & ~rr & (jrc >= lo) & (jrc < hi)
+                        false_by_jrc[m][label] += km2(in_bin)
                     for kind, wrong in (("false_flood", p & ~rr), ("missed_flood", ~p & rr)):
                         for a, row, col in _components(wrong, area_row, top=3):
                             x, y = rasterio.transform.xy(wt, row, col)
@@ -432,6 +478,9 @@ def step_compare(cfg: dict[str, Any], overwrite: bool, day: str) -> None:
         "permanent_water": f"JRC occurrence >= {occ_limit} %, removed from the analysed area",
         "unosat_table": reference,
         "regions": {},
+        "false_flood_km2_by_jrc_occurrence": {
+            m: {k: round(v, 1) for k, v in false_by_jrc[m].items()} for m in mask_paths
+        },
         "failure_cases": {
             m: sorted(patches[m], key=lambda p: -p["area_km2"])[:8] for m in mask_paths
         },
@@ -482,7 +531,15 @@ def make_figures(cfg: dict[str, Any], post: Path, max_px: int = 1600) -> None:
             "magma",
             (0, 0.3),
         ),
-        (out_dir / f"{post.stem}_model_mask.tif", 1, "model flood mask", "Blues", (0, 1)),
+        (
+            out_dir / f"{post.stem}_pre_flood_prob.tif",
+            1,
+            "pre-scene water probability",
+            "Blues",
+            (0, 1),
+        ),
+        (out_dir / f"{post.stem}_model_mask.tif", 1, "(a) all water - JRC", "Blues", (0, 1)),
+        (out_dir / f"{post.stem}_model_new_mask.tif", 1, "(b) new water", "Blues", (0, 1)),
         (
             out_dir / f"{post.stem}_change_otsu_mask.tif",
             1,
@@ -493,7 +550,7 @@ def make_figures(cfg: dict[str, Any], post: Path, max_px: int = 1600) -> None:
         (out_dir / f"{post.stem}_depth.tif", 1, "water depth (m)", "viridis", (0, 3)),
     ]
     panels = [p for p in panels if p[0].exists()]
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    fig, axes = plt.subplots(2, 4, figsize=(24, 10))
     for ax in axes.ravel():
         ax.axis("off")
     for ax, (path, band, title, cmap, (lo, hi)) in zip(axes.ravel(), panels, strict=False):
@@ -517,7 +574,8 @@ def make_figures(cfg: dict[str, Any], post: Path, max_px: int = 1600) -> None:
 
 
 METHOD_NAMES = {
-    "model": "E6 ensemble (U-Net, VV+VH+HAND)",
+    "model": "(a) E6 ensemble, all water minus JRC >= 50 %",
+    "model_new": "(b) E6 ensemble, new water (post and not pre)",
     "change_otsu": "Change-detection Otsu",
     "otsu": "Single-date Otsu (VH)",
 }
@@ -541,7 +599,85 @@ def write_doc(cfg: dict[str, Any]) -> None:
         f"**{CREDIT}** (United Nations Satellite Centre, FL20240928NPL, preliminary, not",
         "field-validated). Contains modified Copernicus Sentinel data [2024].",
         "",
+        "## Two versions of our flood map",
+        "",
+        "- **(a) All water minus JRC.** The E6 ensemble finds every pixel of open water on the",
+        "  post date; water JRC saw in at least "
+        f"{cfg['permanent_water_occurrence']} % of its observations is removed.",
+        "- **(b) New water.** The same ensemble also runs on the pre-flood scene of the same",
+        "  relative orbit (`S1_<post date>_pre.tif`, the latest acquisition in "
+        f"{' to '.join(cfg['dates'].get('pre_window', ['the pre-flood window']))}),",
+        "  and flood is water in the post scene that is not water in the pre scene. JRC",
+        "  permanent water is removed as in (a). (b) is the map used for exposure and priority",
+        "  (`configs/priority.yaml`), so the normal river channel does not count as exposed.",
+        "",
+        'UNOSAT\'s layers are "New Water / Water Increase" against **its own reference image,',
+        "Sentinel-1 of 11 June 2024**, which is not part of the product. Our pre scenes are from",
+        "**mid-September 2024**, deep in the monsoon, when much more of the floodplain is already",
+        "wet. Water that appeared between June and mid-September counts as new for UNOSAT but",
+        "not for (b), so **(b) may under-count relative to UNOSAT**; (a) over-counts because it",
+        "keeps all seasonal water. The two bracket UNOSAT's definition.",
+        "",
     ]
+    findings, recalls = [], []
+    for day in cfg["dates"]["post"]:
+        path = _result_path(Path(f"S1_{day.replace('-', '')}.tif"))
+        if path.exists():
+            res = json.loads(path.read_text(encoding="utf-8"))
+            by_jrc = res.get("false_flood_km2_by_jrc_occurrence", {}).get("model")
+            whole = res["regions"]["unosat_extent"]
+            methods = whole["methods"]
+            if "model" in methods and "model_new" in methods:
+                a, b = methods["model"], methods["model_new"]
+                recalls.append(
+                    f"| {day} | {whole['unosat_flood_km2']} | {a['flooded_km2']} | {a['recall']} | "
+                    f"{b['flooded_km2']} | {b['recall']} | {b['precision']} |"
+                )
+            if by_jrc:
+                findings.append(
+                    f"| {day} | {sum(by_jrc.values()):.1f} | "
+                    + " | ".join(f"{v:.1f}" for v in by_jrc.values())
+                    + " |"
+                )
+    if findings:
+        lines += [
+            "## Seasonal water: why (a) disagrees with UNOSAT",
+            "",
+            "Area that (a) marks as flood but UNOSAT does not, inside the analysis extent, split",
+            "by JRC water occurrence (km^2):",
+            "",
+            "| Date | False flood | " + " | ".join(f"JRC {k}" for k in JRC_BINS) + " |",
+            "|---" * (2 + len(JRC_BINS)) + "|",
+            *findings,
+            "",
+            "Most of it is water JRC has seen before, the larger part seasonal (occurrence 10 to",
+            "49 %): the braided Koshi channels, sand bars and floodplain ponds that are wet every",
+            "monsoon. JRC >= 50 % does not remove them, but UNOSAT's June 2024 reference does.",
+            "(a)'s recall is high, so the extra area is mostly a difference of definition, not",
+            "missed detections; (b) removes water already present in mid-September.",
+            "",
+        ]
+    if recalls:
+        lines += [
+            "## New water (b): low recall against UNOSAT",
+            "",
+            "| Date | UNOSAT km^2 | (a) km^2 | (a) recall | (b) km^2 | (b) recall "
+            "| (b) precision |",
+            "|---|---|---|---|---|---|---|",
+            *recalls,
+            "",
+            "(b) removes nearly all of (a)'s seasonal false flood (see its false-flood split in",
+            "`docs/results/nepal_level1_<date>.json`), but it also loses most of UNOSAT's flood:",
+            "the gap between (a)'s and (b)'s recall is UNOSAT flood that our model already saw as",
+            "water in the mid-September pre scene. This is the expected direction (UNOSAT's",
+            "reference is June 2024, ours is mid-September), but the size is large: by this",
+            "comparison, most of what UNOSAT reports as new water was already wet before",
+            "27 September. (b) therefore under-counts flood relative to UNOSAT, and exposure",
+            "computed from (b) under-counts accordingly. Precision does not rise with (b): most of",
+            "its new water is not in UNOSAT's layer either (open these places in QGIS; candidates",
+            "are wet soil, new sand bars and changes between orbits).",
+            "",
+        ]
     for day in cfg["dates"]["post"]:
         path = _result_path(Path(f"S1_{day.replace('-', '')}.tif"))
         if not path.exists():

@@ -1,0 +1,312 @@
+{
+ "date": "2024-10-01",
+ "scene": "S1_20241001.tif",
+ "credit": "Analysis: UNOSAT",
+ "unosat_flood_layer": "S1_20241001_FloodExtent_Koshi_Madhesh.shp",
+ "unosat_extent_layer": "S1_20241001_AnalysisExtent_Koshi_Madhesh.shp",
+ "permanent_water": "JRC occurrence >= 50 %, removed from the analysed area",
+ "unosat_table": {
+  "acquired_utc": "12:14",
+  "analysed_km2": 6139,
+  "flood_km2": 55,
+  "exposed": 17794
+ },
+ "regions": {
+  "unosat_extent": {
+   "note": "UNOSAT analysis extent of the same date, inside our scene",
+   "analysed_km2": 6116.4,
+   "unosat_flood_km2": 49.43,
+   "unosat_flood_km2_before_jrc_removal": 55.28,
+   "methods": {
+    "model": {
+     "flooded_km2": 158.89,
+     "iou": 0.2884,
+     "f1": 0.4477,
+     "precision": 0.2935,
+     "recall": 0.9433
+    },
+    "model_new": {
+     "flooded_km2": 35.2,
+     "iou": 0.1314,
+     "f1": 0.2323,
+     "precision": 0.2793,
+     "recall": 0.1989
+    },
+    "change_otsu": {
+     "flooded_km2": 555.74,
+     "iou": 0.0433,
+     "f1": 0.083,
+     "precision": 0.0452,
+     "recall": 0.508
+    },
+    "otsu": {
+     "flooded_km2": 501.37,
+     "iou": 0.0951,
+     "f1": 0.1737,
+     "precision": 0.0954,
+     "recall": 0.9684
+    }
+   }
+  },
+  "nepal": {
+   "note": "the same, clipped to Nepal (the extent polygons also cover India)",
+   "analysed_km2": 6104.4,
+   "unosat_flood_km2": 49.29,
+   "unosat_flood_km2_before_jrc_removal": 55.14,
+   "methods": {
+    "model": {
+     "flooded_km2": 158.57,
+     "iou": 0.2882,
+     "f1": 0.4474,
+     "precision": 0.2933,
+     "recall": 0.9434
+    },
+    "model_new": {
+     "flooded_km2": 34.92,
+     "iou": 0.1304,
+     "f1": 0.2308,
+     "precision": 0.2783,
+     "recall": 0.1971
+    },
+    "change_otsu": {
+     "flooded_km2": 553.57,
+     "iou": 0.0433,
+     "f1": 0.0829,
+     "precision": 0.0452,
+     "recall": 0.5072
+    },
+    "otsu": {
+     "flooded_km2": 500.02,
+     "iou": 0.0951,
+     "f1": 0.1737,
+     "precision": 0.0954,
+     "recall": 0.9685
+    }
+   }
+  }
+ },
+ "false_flood_km2_by_jrc_occurrence": {
+  "model": {
+   "never water (0)": 26.7,
+   "rare (1-9)": 18.2,
+   "seasonal (10-49)": 67.3
+  },
+  "model_new": {
+   "never water (0)": 11.7,
+   "rare (1-9)": 5.6,
+   "seasonal (10-49)": 8.1
+  },
+  "change_otsu": {
+   "never water (0)": 469.6,
+   "rare (1-9)": 22.0,
+   "seasonal (10-49)": 39.0
+  },
+  "otsu": {
+   "never water (0)": 355.2,
+   "rare (1-9)": 27.0,
+   "seasonal (10-49)": 71.3
+  }
+ },
+ "failure_cases": {
+  "model": [
+   {
+    "type": "false_flood",
+    "area_km2": 30.033,
+    "lon": 86.9895,
+    "lat": 26.6121
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 23.279,
+    "lon": 87.0896,
+    "lat": 26.7378
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 8.884,
+    "lon": 86.9052,
+    "lat": 26.5028
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 2.92,
+    "lon": 86.8255,
+    "lat": 26.4651
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 2.811,
+    "lon": 87.1408,
+    "lat": 26.81
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 1.192,
+    "lon": 86.8813,
+    "lat": 26.4653
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.79,
+    "lon": 86.4984,
+    "lat": 26.5791
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.706,
+    "lon": 86.5057,
+    "lat": 26.6372
+   }
+  ],
+  "model_new": [
+   {
+    "type": "missed_flood",
+    "area_km2": 1.259,
+    "lon": 87.0525,
+    "lat": 26.7037
+   },
+   {
+    "type": "missed_flood",
+    "area_km2": 1.199,
+    "lon": 87.0807,
+    "lat": 26.7504
+   },
+   {
+    "type": "missed_flood",
+    "area_km2": 1.117,
+    "lon": 86.9748,
+    "lat": 26.6245
+   },
+   {
+    "type": "missed_flood",
+    "area_km2": 1.015,
+    "lon": 86.9978,
+    "lat": 26.616
+   },
+   {
+    "type": "missed_flood",
+    "area_km2": 0.804,
+    "lon": 87.0221,
+    "lat": 26.6542
+   },
+   {
+    "type": "missed_flood",
+    "area_km2": 0.578,
+    "lon": 87.0633,
+    "lat": 26.6935
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.317,
+    "lon": 86.8095,
+    "lat": 26.4529
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.295,
+    "lon": 87.067,
+    "lat": 26.7184
+   }
+  ],
+  "change_otsu": [
+   {
+    "type": "false_flood",
+    "area_km2": 0.627,
+    "lon": 87.0638,
+    "lat": 26.717
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.558,
+    "lon": 87.0892,
+    "lat": 26.7506
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.454,
+    "lon": 86.9138,
+    "lat": 26.4965
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.38,
+    "lon": 87.0991,
+    "lat": 26.7737
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.332,
+    "lon": 86.9982,
+    "lat": 26.6051
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.325,
+    "lon": 87.013,
+    "lat": 26.6357
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 0.316,
+    "lon": 86.836,
+    "lat": 26.4712
+   },
+   {
+    "type": "missed_flood",
+    "area_km2": 0.271,
+    "lon": 86.9753,
+    "lat": 26.6268
+   }
+  ],
+  "otsu": [
+   {
+    "type": "false_flood",
+    "area_km2": 28.674,
+    "lon": 86.988,
+    "lat": 26.6092
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 24.203,
+    "lon": 87.0903,
+    "lat": 26.7392
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 9.23,
+    "lon": 86.9035,
+    "lat": 26.5021
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 3.219,
+    "lon": 86.8243,
+    "lat": 26.4641
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 2.525,
+    "lon": 87.1404,
+    "lat": 26.8091
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 2.264,
+    "lon": 86.5214,
+    "lat": 26.7349
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 1.727,
+    "lon": 86.7763,
+    "lat": 26.5585
+   },
+   {
+    "type": "false_flood",
+    "area_km2": 1.197,
+    "lon": 86.8682,
+    "lat": 26.7576
+   }
+  ]
+ }
+}

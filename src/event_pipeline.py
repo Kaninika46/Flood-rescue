@@ -4,6 +4,10 @@ Used by ``scripts/run_event.py`` (D2: stores results in the database) and
 ``scripts/time_pipeline.py`` (C5: reports minutes per step). Steps:
 
 1. ``level1``   ensemble flood probability + confidence (src/level1_radar/predict.py)
+1b. ``new_water`` only when ``<scene stem>_pre.tif`` (same orbit, same grid) lies next to the
+                scene: the ensemble on the pre scene, and a new-water mask (water in post, not in
+                pre; src/level1_radar/new_water.py) that the priority step uses, so the normal
+                river channel is not counted as exposed. Depth and roads keep all water.
 2. ``depth``    FwDET depth on a 30 m UTM grid (src/depth)
 3. ``level2``   SpaceNet 8 road status, only when Maxar tiles are given (sn8 env; an evaluation
                 folder with ``road_status.geojson`` is read)
@@ -63,7 +67,21 @@ def step_level1(run: EventRun, model_config: str, hand: Path | None) -> None:
 
         terrain = {"HAND": write_terrain_rasters(run.scene, run.out_dir, kinds=("hand",))["hand"]}
     prob, std = predict_scene(ensemble, run.scene, run.out_dir, terrain)
-    run.outputs.update(prob=prob, std=std)
+    run.outputs.update(prob=prob, std=std, ensemble=ensemble, terrain=terrain)
+
+
+def step_new_water(run: EventRun, threshold: float = 0.5) -> None:
+    """Pre-scene prediction and the new-water mask (skipped when there is no pre scene)."""
+    from src.level1_radar.new_water import pre_scene_for, write_new_water_mask
+    from src.level1_radar.predict import predict_scene
+
+    pre = pre_scene_for(run.scene)
+    if pre is None:
+        log.info("no %s_pre scene: priority uses all water", run.scene.stem)
+        return
+    pre_prob, _ = predict_scene(run.outputs["ensemble"], pre, run.out_dir, run.outputs["terrain"])
+    out = run.out_dir / f"{run.scene.stem}_new_water_mask.tif"
+    run.outputs["mask"] = write_new_water_mask(run.outputs["prob"], pre_prob, out, threshold)
 
 
 def step_depth(run: EventRun, threshold: float = 0.5, resolution_m: float = 30.0) -> None:
@@ -211,6 +229,7 @@ def run_event(
     out_dir.mkdir(parents=True, exist_ok=True)
     run = EventRun(scene=scene, out_dir=out_dir)
     run.timed("level1", lambda: step_level1(run, model_config, hand))
+    run.timed("new_water", lambda: step_new_water(run))
     run.timed("depth", lambda: step_depth(run))
     run.timed("level2", lambda: step_level2(run, road_status))
     G = run.timed("roads", lambda: step_roads(run))

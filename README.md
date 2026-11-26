@@ -306,6 +306,10 @@ analysis extent, with JRC permanent water left out of both maps (the product has
 permanent-water layer). Results are given for the whole extent inside our scene and for its Nepal
 part (the extents cover India too): `docs/results/nepal_level1_<YYYYMMDD>.json` and
 `docs/nepal_level1.md`. The 1 October scene reuses the 27 September HAND and slope (same grid).
+Two model maps are scored: (a) all water minus JRC, and (b) new water, the same ensemble run on
+the same-orbit pre scene and flood = water in post and not in pre. (b) feeds exposure and priority
+(`configs/priority.yaml`), so the normal river channel is not counted as exposed; `run_event.py`
+does the same when `<scene>_pre.tif` lies next to the scene (timed as step `new_water`).
 
 ### B. Roads (Level 2) and safe routes
 
