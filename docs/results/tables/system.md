@@ -1,1 +1,21 @@
-_No results yet._
+| Metric | Value |
+|---|---|
+| Scene | S1_20240927.tif |
+| GPU | NVIDIA GeForce RTX 4060 Laptop GPU, 8.0 GB, compute 8.9 |
+| Minutes: level1 | 2.58 |
+| Minutes: mask | 0.12 |
+| Minutes: depth | 0.30 |
+| Minutes: level2 | 0.00 |
+| Minutes: roads | 1.24 |
+| Minutes: priority | 0.21 |
+| Minutes: alert | 0.00 |
+| Minutes: image to alert draft | 4.46 |
+| Demo route time (car), min | 55.4 |
+| Demo route time (truck), min | 69.3 |
+| Demo route time (foot), min | 366.2 |
+| Route length through water above the car limit, m | 0 |
+| Route length through water above the truck limit, m | 0 |
+| Route length through water above the foot limit, m | 0 |
+| Road edges: dry | 43904 |
+| Road edges: flooded | 90 |
+| Road edges: verify | 2955 |

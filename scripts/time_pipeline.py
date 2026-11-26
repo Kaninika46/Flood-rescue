@@ -68,6 +68,15 @@ def main(
     lines += [
         f"| **image to alert draft** | **{run.total_minutes:.2f}** |",
         "",
+        (
+            "HAND and other terrain rasters are prepared before an event (they do not change "
+            "between floods) and were passed with `--hand`; their preparation is not included "
+            "in the time above."
+            if hand is not None
+            else "HAND was built for this scene inside the `level1` step and is included in the "
+            "time above; in operation it is prepared before an event."
+        ),
+        "",
         "Routes (minutes; None = no passable route): "
         + ", ".join(f"{k}: {v}" for k, v in route_rows.items()),
         "",
