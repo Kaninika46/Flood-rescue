@@ -18,6 +18,10 @@ channels:
 dependencies:
   - python=3.11
   - pip
+  # Security floors. Both were upgraded in the existing env with pip, not conda (the conda
+  # solve ran out of memory in WSL); see the Security section of README.md.
+  - urllib3>=2.8
+  - setuptools>=84
 
   # Deep learning (CUDA 12.9 build; supports RTX 20xx to RTX 50xx laptop GPUs)
   - pytorch-gpu=2.13
@@ -50,9 +54,9 @@ dependencies:
   - matplotlib=3.11
   - tqdm
 
-  # Data download (S3 buckets, Sen1Floods11 bucket, Earth Engine for the Nepal scenes)
+  # Data download (S3 buckets via boto3, Sen1Floods11 bucket, Earth Engine for the Nepal scenes).
+  # awscli removed: no project code uses it, and it pins urllib3<=2.6.3.
   - boto3
-  - awscli=2
   - gsutil=5
   - earthengine-api=1
 

@@ -508,6 +508,33 @@ git push -u origin main
 * A metric with a zero denominator is `NaN` (for example IoU on a split with no water at all);
   report it as "n/a".
 
+## Security
+
+Details: `backend/README.md` (tokens, rate limits, secrets) and `app/README.md` (phone demo,
+firewall).
+
+* **Backend.** Listens on 127.0.0.1 unless started with `--phone-demo`, which refuses to start
+  without `OFFICER_TOKEN` and `TEAM_TOKEN`. Every action that changes something needs a bearer
+  token (401 otherwise); approvals record the token's role. `POST /routes` and
+  `POST /field_reports` are rate-limited per IP (429 with `Retry-After`). Text lengths and
+  lon/lat ranges are checked, and `GET /layers` returns no server file paths. Database and Redis
+  passwords and the tokens live only in the git-ignored `backend/.env`; Redis needs its password
+  and every Docker port is bound to 127.0.0.1.
+* **Rescuer app.** The team token is set in Settings; reports refused for a missing or wrong
+  token stay queued. It talks plain HTTP on the local Wi-Fi, so open port 8000 in the Windows
+  firewall to the phone's IP only, and remove the rule after the demo. The release APK is signed
+  with the debug key: for your own test phones only, never publish it.
+* **Dashboard.** Keeps the officer token in memory for the tab only; `npm audit` is clean.
+* **Checkpoints** are loaded with `weights_only=True`.
+* **Python packages.** `urllib3` (2.8.0) and `setuptools` (84.2.1) were upgraded in the `flood`
+  env with pip, not conda, because the conda solve ran out of memory in WSL. `environment.yml`
+  sets the same floors (`urllib3>=2.8`, `setuptools>=84`) for new envs. `awscli` was removed from
+  `environment.yml` (no project code uses it, and it requires `urllib3<=2.6.3`); in an existing
+  env it stays installed until `conda env update --prune`, and `pip check` reports that conflict.
+* **Known, low exposure: GDAL 3.12.** It stays at 3.12 from conda-forge. GDAL reads only rasters
+  we downloaded into `$DATA_ROOT`; the API registers scenes by path under `$DATA_ROOT` and
+  accepts no raster uploads.
+
 ## Troubleshooting
 
 | Problem | Fix |
