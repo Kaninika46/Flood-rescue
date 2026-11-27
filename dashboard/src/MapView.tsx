@@ -1,4 +1,5 @@
-import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import type { GeoJSONSource, Map as MlMap } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 
 import { api } from "./api";

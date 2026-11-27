@@ -32,7 +32,17 @@ npm run dev
 ```
 
 Open http://localhost:5173. In development `/api/...` is forwarded to http://localhost:8000
-(set `API_TARGET` to change it). For a static build served elsewhere:
+(set `API_TARGET` to change it).
+
+**For demos, serve the production build, not the dev server** (the dev server is for editing
+code only):
+
+```bash
+npm run demo
+```
+
+builds into `dist/` and serves it on http://localhost:4173 (localhost only), with the same `/api`
+forwarding. For a static build served elsewhere:
 
 ```bash
 VITE_API_URL=http://localhost:8000 npm run build
