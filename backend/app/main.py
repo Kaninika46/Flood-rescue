@@ -12,12 +12,12 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import networkx as nx
 from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -48,43 +48,54 @@ app.add_middleware(CORSMiddleware, allow_origins=list(get_settings().cors_origin
 # --------------------------------------------------------------------------- schemas
 
 
+# Input limits: free text is short (and fits its database column), positions are real lon/lat,
+# and the alert's river and shelter come from configs/priority.yaml, never from the request.
+TEXT_MAX = 200  # notes, reasons, scene names
+NAME_MAX = 120  # officer and reporter names (String(120) columns)
+
+Lon = Annotated[float, Field(ge=-180.0, le=180.0)]
+Lat = Annotated[float, Field(ge=-90.0, le=90.0)]
+
+
 class SceneIn(BaseModel):
-    name: str
-    s1_path: str
+    name: str = Field(min_length=1, max_length=TEXT_MAX)
+    s1_path: str = Field(max_length=1024)
 
 
 class RouteIn(BaseModel):
     vehicle: str = Field(pattern="^(foot|car|truck|boat)$")
-    start: tuple[float, float]  # lon, lat
-    end: tuple[float, float]
+    start: tuple[Lon, Lat]
+    end: tuple[Lon, Lat]
 
 
 class AlertIn(BaseModel):
+    """Only the ranked area; any other field (e.g. free-text river or shelter) is refused."""
+
+    model_config = ConfigDict(extra="forbid")
     priority_id: int
-    river: str = "Koshi"
-    shelter: str = "the nearest school or health post on high ground"
 
 
 class ApproveIn(BaseModel):
-    officer: str = Field(min_length=2)
+    officer: str = Field(min_length=2, max_length=NAME_MAX)
 
 
 class CancelIn(BaseModel):
-    reason: str = Field(min_length=3)
+    reason: str = Field(min_length=3, max_length=TEXT_MAX)
 
 
 class SendIn(BaseModel):
-    recipients: list[str] | None = None
+    recipients: list[Annotated[str, Field(max_length=20)]] | None = Field(default=None,
+                                                                          max_length=20)
     gateway: str = Field(default="console", pattern="^(console|twilio)$")
 
 
 class FieldReportIn(BaseModel):
-    edge_id: str | None = None  # omitted: nearest road to lon/lat (rescuer app, GPS only)
+    edge_id: str | None = Field(default=None, max_length=80)  # omitted: nearest road (GPS only)
     report: str = Field(pattern="^(road_open|road_closed|bridge_gone|flooded)$")
-    lon: float | None = None
-    lat: float | None = None
-    note: str | None = None
-    reporter: str | None = None
+    lon: Lon | None = None
+    lat: Lat | None = None
+    note: str | None = Field(default=None, max_length=TEXT_MAX)
+    reporter: str | None = Field(default=None, max_length=NAME_MAX)
 
 
 # --------------------------------------------------------------------------- endpoints
@@ -242,8 +253,7 @@ def create_alert(body: AlertIn, session: Session = Depends(get_session),
                  _role: str = Depends(require_officer)) -> dict[str, Any]:
     """Draft a CAP alert for a ranked area."""
     try:
-        return _alert_json(services.alert_from_priority(session, body.priority_id, body.river,
-                                                        body.shelter))
+        return _alert_json(services.alert_from_priority(session, body.priority_id))
     except KeyError as err:
         raise HTTPException(404, "priority not found") from err
 

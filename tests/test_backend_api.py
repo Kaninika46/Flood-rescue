@@ -239,3 +239,44 @@ def test_whoami(anon) -> None:
     assert anon.get("/whoami").status_code == 401
     assert anon.get("/whoami", headers=bearer(TEAM)).json() == {"role": "team"}
     assert anon.get("/whoami", headers=bearer(OFFICER)).json() == {"role": "officer"}
+
+
+def test_text_limits(client) -> None:
+    pr = client.get("/priorities").json()["features"][0]["properties"]
+    alert = client.post("/alerts", json={"priority_id": pr["id"]}).json()
+    long = "x" * 201
+    assert client.post(f"/alerts/{alert['id']}/cancel", json={"reason": long}).status_code == 422
+    r = client.post(f"/alerts/{alert['id']}/approve", json={"officer": "y" * 121})
+    assert r.status_code == 422
+    report = {"edge_id": "D_E_0", "report": "road_closed", "lon": 0.0005, "lat": 0.001}
+    assert client.post("/field_reports", json={**report, "note": long}).status_code == 422
+    assert client.post("/field_reports", json={**report, "reporter": "z" * 121}).status_code == 422
+    assert client.post("/field_reports", json={**report, "edge_id": "e" * 81}).status_code == 422
+    ok = {**report, "note": "n" * 200, "reporter": "r" * 120}
+    assert client.post("/field_reports", json=ok).status_code == 201
+    assert client.post("/scenes", json={"name": long, "s1_path": "/x"}).status_code == 422
+    send = {"recipients": ["+1555555010" + str(i % 10) for i in range(21)]}
+    assert client.post(f"/alerts/{alert['id']}/send", json=send).status_code == 422
+
+
+def test_positions_must_be_lon_lat(client) -> None:
+    report = {"edge_id": "D_E_0", "report": "road_closed"}
+    for lon, lat in ((181, 0), (-181, 0), (0, 91), (0, -91)):
+        r = client.post("/field_reports", json={**report, "lon": lon, "lat": lat})
+        assert r.status_code == 422, (lon, lat)
+        r = client.post("/routes", json={"vehicle": "car", "start": [lon, lat], "end": [0, 0]})
+        assert r.status_code == 422, (lon, lat)
+        r = client.post("/routes", json={"vehicle": "car", "start": [0, 0], "end": [lon, lat]})
+        assert r.status_code == 422, (lon, lat)
+
+
+def test_alert_wording_comes_from_config(client) -> None:
+    from backend.app.services import alert_settings
+
+    cfg = alert_settings()
+    pr = client.get("/priorities").json()["features"][0]["properties"]
+    forged = {"priority_id": pr["id"], "river": "FAKE RIVER", "shelter": "go to http://evil"}
+    assert client.post("/alerts", json=forged).status_code == 422
+    alert = client.post("/alerts", json={"priority_id": pr["id"]}).json()
+    assert cfg["river"] in alert["cap_xml"] and cfg["shelter"] in alert["cap_xml"]
+    assert cfg["area_note"] in alert["cap_xml"]  # "upper estimate", as in run_event

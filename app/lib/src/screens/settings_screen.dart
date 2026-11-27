@@ -61,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 16),
           TextField(
             controller: _team,
+            maxLength: 100, // sent as "app: <team>" (server limit 120)
             decoration: const InputDecoration(labelText: 'Team name', border: OutlineInputBorder()),
           ),
           const SizedBox(height: 16),

@@ -33,9 +33,9 @@ export default function ReportPanel({ selected, reports, onReport, onClose }: Pr
             {road.confidence != null && <> · confidence {road.confidence.toFixed(2)}</>}
             {road.bridge && <> · bridge</>} · source {road.source}
           </p>
-          <input placeholder="Reported by (team / person)" value={reporter}
+          <input placeholder="Reported by (team / person)" value={reporter} maxLength={100}
             onChange={(e) => setReporter(e.target.value)} />
-          <input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <input placeholder="Note (optional)" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} />
           <div className="report-buttons">
             {(Object.keys(REPORT) as ReportKind[]).map((k) => (
               <button key={k} disabled={busy} style={{ borderColor: REPORT[k].color }}

@@ -90,6 +90,7 @@ class _ReportSheetState extends State<ReportSheet> {
             ),
           TextField(
             controller: _note,
+            maxLength: 150, // the queue adds " | queued <time>" (server limit 200)
             decoration: const InputDecoration(labelText: 'Note (optional)', border: OutlineInputBorder()),
           ),
         ],

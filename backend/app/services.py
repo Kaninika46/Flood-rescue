@@ -123,14 +123,22 @@ def add_field_report(session: Session, G: nx.MultiDiGraph, edge_id: str | None, 
 # --------------------------------------------------------------------------- alerts
 
 
-def alert_from_priority(session: Session, priority_id: int, river: str, shelter: str) -> Alert:
-    """CAP draft for one ranked area."""
+def alert_settings() -> dict[str, str]:
+    """River, shelter and area note for alert text (configs/priority.yaml ``alert``)."""
+    cfg = load_config(repo_root() / "configs" / "priority.yaml")["alert"]
+    return {k: str(cfg[k]) for k in ("river", "shelter", "area_note")}
+
+
+def alert_from_priority(session: Session, priority_id: int) -> Alert:
+    """CAP draft for one ranked area; the wording comes from the config, as in run_event."""
     p = session.get(Priority, priority_id)
     if p is None:
         raise KeyError(priority_id)
+    cfg = alert_settings()
     geom = to_shape(p.geom)
-    content = AlertContent(river=river, district=p.area_name, shelter=shelter, depth_m=1.0,
-                           area_desc=f"{p.area_name} (priority {p.priority})",
+    content = AlertContent(river=cfg["river"], district=p.area_name, shelter=cfg["shelter"],
+                           depth_m=1.0,
+                           area_desc=f"{p.area_name} (priority {p.priority}); {cfg['area_note']}",
                            polygon=polygon_from_geometry(geom))
     xml = build_alert(content)
     ident = xml.split("<identifier>")[1].split("</identifier>")[0]

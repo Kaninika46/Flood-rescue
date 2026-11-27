@@ -36,7 +36,7 @@ function AlertCard({ a, onApprove, onSend }: { a: Alert } & Omit<Props, "alerts"
           e.preventDefault();
           if (officer.trim().length >= 2) void run(() => onApprove(a.id, officer.trim()));
         }}>
-          <input aria-label="Officer name" placeholder="Officer name" value={officer}
+          <input aria-label="Officer name" placeholder="Officer name" value={officer} maxLength={120}
             onChange={(e) => setOfficer(e.target.value)} />
           <button type="submit" className="primary" disabled={busy || officer.trim().length < 2}>
             Approve
