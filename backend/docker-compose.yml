@@ -2,7 +2,9 @@
 #   docker compose -f backend/docker-compose.yml up -d db redis        # just PostGIS + Redis
 #   docker compose -f backend/docker-compose.yml --profile full up -d  # + API and RQ worker
 # Without the "full" profile, run the API and worker from the "flood" conda env:
-#   uvicorn backend.app.main:app --reload
+#   python -m backend.app --reload               # 127.0.0.1:8000
+# Every published port binds to 127.0.0.1, so nothing here is reachable from the Wi-Fi. For the
+# phone demo run the API outside Docker with --phone-demo (app/README.md).
 #   rq worker --url redis://localhost:6379/0 flood
 services:
   db:
@@ -11,7 +13,7 @@ services:
       POSTGRES_USER: flood
       POSTGRES_PASSWORD: flood          # local development only
       POSTGRES_DB: flood
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U flood"]
@@ -19,10 +21,11 @@ services:
       retries: 10
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
   api:
     profiles: ["full"]
     build: {context: .., dockerfile: backend/Dockerfile}
+    # 0.0.0.0 inside the container only; the published port below is bound to 127.0.0.1
     command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
     environment: &env
       DATABASE_URL: postgresql+psycopg://flood:flood@db:5432/flood
@@ -32,7 +35,7 @@ services:
       OFFICER_TOKEN: ${OFFICER_TOKEN:-}   # secrets: from your shell, never written here
       TEAM_TOKEN: ${TEAM_TOKEN:-}
     volumes: ["${DATA_ROOT:?set DATA_ROOT}:/data", "..:/app"]
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]
     depends_on: {db: {condition: service_healthy}, redis: {condition: service_started}}
   worker:
     profiles: ["full"]

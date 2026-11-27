@@ -24,16 +24,18 @@ Say at the start and keep visible: **this is an exercise.** Routes are advice, a
 docker compose -f backend/docker-compose.yml up -d db redis
 ```
 ```bash
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+export OFFICER_TOKEN=... TEAM_TOKEN=...   # the same values the dashboard and the phone use
+python -m backend.app --phone-demo        # firewall: phone IP only (app/README.md)
 ```
 ```bash
 rq worker --url redis://localhost:6379/0 flood
 ```
 ```bash
-cd dashboard && npm run dev
+cd dashboard && npm run demo
 ```
 
-Open http://localhost:5173 on the projector (browser zoom 110 to 125 %). Phone on the same
+Open http://localhost:4173 on the projector (the production build, not the dev server), enter
+the officer token at the top (browser zoom 110 to 125 %). Phone on the same
 Wi-Fi, app open, server address set to the laptop. Pick the Koshi scene in the header.
 
 ## The 10 minutes

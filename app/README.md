@@ -39,13 +39,49 @@ The release APK is signed with the debug key (fine for your own test phones; do 
 
 ## Connect to the backend
 
-1. Start the backend on the laptop so the phone can reach it:
-   `uvicorn backend.app.main:app --host 0.0.0.0 --port 8000`.
+1. Start the backend on the laptop so the phone can reach it (it listens on 127.0.0.1 unless you
+   ask for the phone demo):
+   ```bash
+   export OFFICER_TOKEN=... TEAM_TOKEN=...      # never commit them
+   python -m backend.app --phone-demo
+   ```
 2. Phone and laptop on the same Wi-Fi. In the app: **Settings → Server address**
    `http://<laptop IP>:8000` (the emulator reaches the laptop at `http://10.0.2.2:8000`, the default).
+   The laptop IP is the Windows Wi-Fi address (`ipconfig` → "Wireless LAN adapter Wi-Fi").
 3. Set the team name, the **team token** (from the control room: the backend's `TEAM_TOKEN`) and
    the vehicle. Road reports need the token. Without it, or with a wrong one, reports stay in the
    queue as "waiting" and go out once the token is fixed; they are never thrown away.
+
+### Windows firewall: let in only the phone (WSL2)
+
+The API has no other network protection, so open port 8000 to the phone's IP only (phone:
+Settings → Wi-Fi → your network → IP address). In an **administrator** PowerShell:
+
+**Mirrored networking** (recommended; survives restarts):
+
+```powershell
+$phone = "192.168.1.23"   # the phone's IP
+Add-Content "$env:USERPROFILE\.wslconfig" "[wsl2]`nnetworkingMode=mirrored"
+New-NetFirewallHyperVRule -Name FloodRescue8000 -DisplayName "Flood Rescue backend (phone only)" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol TCP -LocalPorts 8000 -RemoteAddresses $phone -Action Allow
+wsl --shutdown
+```
+
+**Or a port-forward** (NAT mode; the WSL IP changes after each restart, so rerun it then):
+
+```powershell
+$phone = "192.168.1.23"
+$wsl = (wsl hostname -I).Trim().Split()[0]
+netsh interface portproxy add v4tov4 listenport=8000 listenaddress=0.0.0.0 connectport=8000 connectaddress=$wsl
+New-NetFirewallRule -DisplayName "Flood Rescue backend (phone only)" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8000 -RemoteAddress $phone -Profile Any
+```
+
+If the phone gets a new IP, update the rule (`Set-NetFirewallHyperVRule -Name FloodRescue8000
+-RemoteAddresses <new IP>`, or `Set-NetFirewallRule -DisplayName "Flood Rescue backend (phone
+only)" -RemoteAddress <new IP>`). After the demo, remove it (`Remove-NetFirewallHyperVRule -Name
+FloodRescue8000`, or `Remove-NetFirewallRule` and `netsh interface portproxy delete v4tov4
+listenport=8000 listenaddress=0.0.0.0`). Check from the phone's browser:
+`http://<laptop IP>:8000/health`. Shared or campus Wi-Fi often blocks phone-to-laptop traffic;
+use the laptop's hotspot or a home router then.
 
 ## Offline map
 

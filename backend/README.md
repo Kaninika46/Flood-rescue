@@ -41,8 +41,12 @@ Run:
 docker compose -f backend/docker-compose.yml up -d db redis
 ```
 ```bash
-uvicorn backend.app.main:app --reload
+python -m backend.app --reload
 ```
+
+This listens on 127.0.0.1:8000 only. `--phone-demo` listens on all interfaces for phones on the
+same Wi-Fi; it refuses to start unless `OFFICER_TOKEN` and `TEAM_TOKEN` are set. See
+`app/README.md` for the firewall rule that lets in only the phone.
 ```bash
 rq worker --url redis://localhost:6379/0 flood
 ```
