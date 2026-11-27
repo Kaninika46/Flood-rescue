@@ -148,11 +148,14 @@ def process_scene(scene_id: int, session: Session = Depends(get_session),
 @app.get("/layers")
 def list_layers(scene_id: int | None = None,
                 session: Session = Depends(get_session)) -> list[dict[str, Any]]:
-    """Flood layers (GeoTIFF paths) of a scene, or of all scenes."""
+    """Flood layers of a scene, or of all scenes: id, kind and PNG URL.
+
+    Server file paths stay on the server (they reveal the disk layout and user name).
+    """
     q = select(FloodLayer)
     if scene_id is not None:
         q = q.where(FloodLayer.scene_id == scene_id)
-    return [{"id": r.id, "scene_id": r.scene_id, "kind": r.kind, "path": r.path,
+    return [{"id": r.id, "scene_id": r.scene_id, "kind": r.kind,
              "png": f"/layers/{r.id}/png"} for r in session.scalars(q.order_by(FloodLayer.id))]
 
 

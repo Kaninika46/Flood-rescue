@@ -299,3 +299,19 @@ def test_rate_limit_routes_and_reports(client, anon, monkeypatch) -> None:
     assert anon.post("/field_reports", json=report, headers=bearer("guess")).status_code == 429
     # other endpoints are not limited
     assert client.get("/health").status_code == 200
+
+
+def test_layers_do_not_reveal_file_paths(client, tmp_path) -> None:
+    from sqlalchemy.orm import sessionmaker
+
+    from backend.app.db import engine_for
+    from backend.app.models import FloodLayer
+
+    secret = str(tmp_path / "home" / "someone" / "flood-data" / "prob.tif")
+    with sessionmaker(bind=engine_for(URL))() as s:
+        s.add(FloodLayer(scene_id=1, kind="probability", path=secret))
+        s.commit()
+    rows = client.get("/layers").json()
+    assert rows and set(rows[0]) == {"id", "scene_id", "kind", "png"}
+    assert "flood-data" not in client.get("/layers").text
+    assert "flood-data" not in client.get("/layers", params={"scene_id": 1}).text

@@ -7,7 +7,7 @@ reimplemented here.
 |---|---|
 | `GET /health` | liveness |
 | `GET/POST /scenes`, `POST /scenes/{id}/process` | register a Sentinel-1 scene (under `$DATA_ROOT`), queue the event pipeline (RQ) |
-| `GET /layers` | flood probability, confidence and depth GeoTIFF paths |
+| `GET /layers` | flood probability, confidence and depth layers (id, kind, PNG URL; no server file paths) |
 | `GET /roads/status` | road edges with status (GeoJSON), latest scene plus field reports |
 | `POST /routes` | `{vehicle, start: [lon, lat], end}` -> route GeoJSON with the advice text and "verify" segments |
 | `GET /priorities` | ranked areas (GeoJSON) |
