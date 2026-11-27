@@ -34,6 +34,7 @@ import typer
 from torch.utils.data import DataLoader
 
 from src.common import gpu
+from src.common.checkpoint import load_checkpoint
 from src.common.config import data_path, effective_batch_size, load_config, repo_root, run_name
 from src.common.logging import get_logger, start_run
 from src.common.metrics import SplitScorer, binarize
@@ -216,7 +217,7 @@ def main(
     state = None
     if resume:
         if last_path.exists():
-            state = torch.load(last_path, map_location="cpu", weights_only=False)
+            state = load_checkpoint(last_path, resume=True)
             log.info("resuming %s from epoch %d", name, state["epoch"] + 1)
         else:
             log.warning("--resume given but %s does not exist; starting from scratch", last_path)

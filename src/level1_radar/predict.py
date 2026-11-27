@@ -31,6 +31,7 @@ import typer
 from rasterio.windows import Window
 from torch import nn
 
+from src.common.checkpoint import load_checkpoint
 from src.common.config import data_path, load_config
 from src.common.logging import get_logger
 from src.level1_radar.datasets import S1_CHANNELS, Norm, load_image
@@ -51,7 +52,7 @@ class Member:
 
 def load_member(path: str | Path, device: torch.device) -> Member:
     """Load a ``best.pt`` / ``last.pt`` checkpoint written by the training script."""
-    ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    ckpt = load_checkpoint(path)
     model_cfg = ckpt["model_cfg"]
     model = make_network(
         model_cfg.get("arch", "unet"),

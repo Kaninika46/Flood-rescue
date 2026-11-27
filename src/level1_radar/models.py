@@ -23,6 +23,7 @@ import segmentation_models_pytorch as smp
 import torch
 from torch import nn
 
+from src.common.checkpoint import load_checkpoint
 from src.common.config import data_path
 
 ARCHS = {"unet": smp.Unet, "unetplusplus": smp.UnetPlusPlus}
@@ -133,9 +134,7 @@ def build_model(model_cfg: Mapping[str, Any], channels: Sequence[str]) -> nn.Mod
         )
         src_channels = ETCI_CHANNELS
     elif init == "checkpoint":
-        ckpt = torch.load(
-            data_path(model_cfg["checkpoint"]), map_location="cpu", weights_only=False
-        )
+        ckpt = load_checkpoint(data_path(model_cfg["checkpoint"]))
         state, src_channels = ckpt["model"], ckpt["channels"]
     else:
         raise ValueError(f"unknown model.init {init!r}")

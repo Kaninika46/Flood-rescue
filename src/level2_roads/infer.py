@@ -28,6 +28,7 @@ import torch
 import typer
 from torch.utils.data import DataLoader
 
+from src.common.checkpoint import load_checkpoint
 from src.common.config import data_path, load_config, run_name
 from src.common.logging import get_logger
 from src.level2_roads.data import read_sn8_split, write_like_pre
@@ -43,7 +44,7 @@ def load_models(cfg: dict, task: str, seeds: Sequence[int], device: torch.device
     models = []
     for seed in seeds:
         path = data_path("checkpoints", f"{run_name(cfg['experiment'], seed)}-{task}", "best.pt")
-        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        ckpt = load_checkpoint(path)
         model = build_model(task, {**cfg["model"], "pretrained": False, "init_weights": None})
         model.load_state_dict(ckpt["model"])
         models.append(model.eval().to(device))

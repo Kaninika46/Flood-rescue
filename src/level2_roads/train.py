@@ -31,6 +31,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from src.common import gpu
+from src.common.checkpoint import load_checkpoint
 from src.common.config import data_path, effective_batch_size, load_config, run_name
 from src.common.logging import get_logger, start_run
 from src.common.metrics import SplitScorer
@@ -196,7 +197,7 @@ def main(
     out.mkdir(parents=True, exist_ok=True)
     last_path, best_path = out / "last.pt", out / "best.pt"
     state = (
-        torch.load(last_path, map_location="cpu", weights_only=False)
+        load_checkpoint(last_path, resume=True)
         if (resume and last_path.exists())
         else None
     )
