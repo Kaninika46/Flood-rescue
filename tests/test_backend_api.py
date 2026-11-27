@@ -3,7 +3,7 @@
 Set ``TEST_DATABASE_URL`` to an empty PostGIS database to run them, e.g. with the
 ``docker compose -f backend/docker-compose.yml up db`` service:
 
-    export TEST_DATABASE_URL=postgresql+psycopg://flood:flood@localhost:5432/flood_test
+    export TEST_DATABASE_URL="postgresql+psycopg://flood:$POSTGRES_PASSWORD@localhost:5432/flood_test"
 
 Without it they are skipped. Phone numbers are from the 555-01xx range reserved for fiction.
 """

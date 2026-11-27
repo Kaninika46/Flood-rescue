@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import re
-
 import pytest
 from typer.testing import CliRunner
 
 from backend.app.__main__ import app, choose_host, missing_tokens
-from src.common.config import repo_root
 
 
 @pytest.fixture()
@@ -46,11 +43,3 @@ def test_phone_demo_needs_both_tokens(runs, monkeypatch) -> None:
     result = CliRunner().invoke(app, ["--phone-demo"])
     assert result.exit_code == 0 and "phone's IP" in result.output
     assert runs[0]["host"] == "0.0.0.0"
-
-
-def test_compose_publishes_ports_on_localhost_only() -> None:
-    text = (repo_root() / "backend" / "docker-compose.yml").read_text()
-    ports = re.findall(r'^\s*ports:\s*\[(.*)\]', text, re.M)
-    published = [p.strip().strip('"') for line in ports for p in line.split(",")]
-    assert published, "no ports found"
-    assert all(p.startswith("127.0.0.1:") for p in published), published

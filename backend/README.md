@@ -42,6 +42,37 @@ app has a "Team token" field in Settings.
 the answer is 429 with `Retry-After`; the rescuer app keeps the report queued and tries again.
 Behind a Windows port-forward all phones share one address, so they share the limit.
 
+## Secrets: `backend/.env`
+
+The database and Redis passwords and the two API tokens live in `backend/.env`, which git
+ignores. Nothing secret is written in `docker-compose.yml`.
+
+```bash
+cp backend/.env.example backend/.env
+```
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(24))"   # once per value in backend/.env
+```
+
+Docker Compose reads `backend/.env` on its own (it sits next to `docker-compose.yml`) and stops
+with "set POSTGRES_PASSWORD in backend/.env" if a password is missing. Redis requires its password
+(`--requirepass`). Every published port is bound to 127.0.0.1. Postgres sets the password only
+when it creates the `pgdata` volume; for an older volume made with the former password, change it
+once with `docker compose -f backend/docker-compose.yml exec db psql -U flood -c "ALTER USER flood
+PASSWORD '<new>'"`.
+
+For the API and worker outside Docker, load the same file into your shell:
+
+```bash
+set -a && source backend/.env && set +a
+```
+```bash
+export DATABASE_URL="postgresql+psycopg://flood:$POSTGRES_PASSWORD@localhost:5432/flood" REDIS_URL="redis://:$REDIS_PASSWORD@localhost:6379/0"
+```
+
+(With the local PostgreSQL over its Unix socket instead of Docker, `DATABASE_URL` is
+`postgresql+psycopg://kaninika@/flood?host=/var/run/postgresql` and needs no password.)
+
 Run:
 
 ```bash
@@ -55,7 +86,7 @@ This listens on 127.0.0.1:8000 only. `--phone-demo` listens on all interfaces fo
 same Wi-Fi; it refuses to start unless `OFFICER_TOKEN` and `TEAM_TOKEN` are set. See
 `app/README.md` for the firewall rule that lets in only the phone.
 ```bash
-rq worker --url redis://localhost:6379/0 flood
+rq worker --url "$REDIS_URL" flood
 ```
 
 Interactive API docs: http://localhost:8000/docs. Tests: `tests/test_backend_api.py`

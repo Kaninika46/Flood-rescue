@@ -28,7 +28,7 @@ export OFFICER_TOKEN=... TEAM_TOKEN=...   # the same values the dashboard and th
 python -m backend.app --phone-demo        # firewall: phone IP only (app/README.md)
 ```
 ```bash
-rq worker --url redis://localhost:6379/0 flood
+rq worker --url "$REDIS_URL" flood   # REDIS_URL with the password from backend/.env
 ```
 ```bash
 cd dashboard && npm run demo

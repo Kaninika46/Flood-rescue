@@ -8,10 +8,13 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Settings:
-    """``DATABASE_URL`` (PostGIS), ``REDIS_URL`` (RQ) and ``JOB_MODE`` (``rq`` or ``sync``)."""
+    """``DATABASE_URL`` (PostGIS), ``REDIS_URL`` (RQ) and ``JOB_MODE`` (``rq`` or ``sync``).
+
+    The defaults hold no password: set both URLs from backend/.env (backend/README.md).
+    """
 
     database_url: str = os.environ.get(
-        "DATABASE_URL", "postgresql+psycopg://flood:flood@localhost:5432/flood")
+        "DATABASE_URL", "postgresql+psycopg://flood@localhost:5432/flood")
     redis_url: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     job_mode: str = os.environ.get("JOB_MODE", "rq")
     cors_origins: tuple[str, ...] = tuple(

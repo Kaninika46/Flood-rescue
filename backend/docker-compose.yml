@@ -1,17 +1,19 @@
 # Flood Rescue AI services.
+# Passwords come from backend/.env (git-ignored; copy backend/.env.example and fill it in).
+# Docker Compose reads that file because it sits next to this one.
 #   docker compose -f backend/docker-compose.yml up -d db redis        # just PostGIS + Redis
 #   docker compose -f backend/docker-compose.yml --profile full up -d  # + API and RQ worker
 # Without the "full" profile, run the API and worker from the "flood" conda env:
 #   python -m backend.app --reload               # 127.0.0.1:8000
 # Every published port binds to 127.0.0.1, so nothing here is reachable from the Wi-Fi. For the
 # phone demo run the API outside Docker with --phone-demo (app/README.md).
-#   rq worker --url redis://localhost:6379/0 flood
+#   rq worker --url "redis://:$REDIS_PASSWORD@localhost:6379/0" flood
 services:
   db:
     image: postgis/postgis:16-3.4
     environment:
       POSTGRES_USER: flood
-      POSTGRES_PASSWORD: flood          # local development only
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in backend/.env}
       POSTGRES_DB: flood
     ports: ["127.0.0.1:5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
@@ -21,6 +23,10 @@ services:
       retries: 10
   redis:
     image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in backend/.env}
+    # $$ = expanded inside the container, so the password is not written into this file
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\""]
     ports: ["127.0.0.1:6379:6379"]
   api:
     profiles: ["full"]
@@ -28,8 +34,8 @@ services:
     # 0.0.0.0 inside the container only; the published port below is bound to 127.0.0.1
     command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
     environment: &env
-      DATABASE_URL: postgresql+psycopg://flood:flood@db:5432/flood
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+psycopg://flood:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in backend/.env}@db:5432/flood
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in backend/.env}@redis:6379/0
       DATA_ROOT: /data
       CORS_ORIGINS: http://localhost:5173
       OFFICER_TOKEN: ${OFFICER_TOKEN:-}   # secrets: from your shell, never written here
@@ -40,7 +46,7 @@ services:
   worker:
     profiles: ["full"]
     build: {context: .., dockerfile: backend/Dockerfile}
-    command: rq worker --url redis://redis:6379/0 flood
+    command: ["sh", "-c", "exec rq worker --url \"$$REDIS_URL\" flood"]
     environment: *env
     volumes: ["${DATA_ROOT:?set DATA_ROOT}:/data", "..:/app"]
     depends_on: [db, redis]
