@@ -46,7 +46,23 @@ export default function App() {
   const [offline, setOffline] = useState(false);
   const reportCount = useRef(0);
 
+  const [showSuperseded, setShowSuperseded] = useState(false);
+
   const scene = scenes.find((s) => s.id === sceneId) ?? null;
+  // superseded scenes stay in the database but are hidden unless asked for; the selected scene is
+  // always listed so the dropdown never disagrees with what the map shows
+  const listedScenes = showSuperseded
+    ? scenes
+    : scenes.filter((s) => s.state !== "superseded" || s.id === sceneId);
+  const hiddenCount = scenes.length - listedScenes.length;
+
+  const toggleSuperseded = (show: boolean) => {
+    setShowSuperseded(show);
+    if (!show && scene?.state === "superseded") {
+      const current = scenes.filter((s) => s.state !== "superseded");
+      setSceneId((current.find((s) => s.state === "done") ?? current[0])?.id ?? null);
+    }
+  };
 
   const loadScene = useCallback(async (id: number | null) => {
     const [l, r, p] = await Promise.all([api.layers(id), api.roads(id), api.priorities(id)]);
@@ -190,9 +206,16 @@ export default function App() {
         <div className="scene">
           <label htmlFor="scene">Scene</label>
           <select id="scene" value={sceneId ?? ""} onChange={(e) => setSceneId(Number(e.target.value))}>
-            {scenes.length === 0 && <option value="">no scenes</option>}
-            {scenes.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.state})</option>)}
+            {listedScenes.length === 0 && (
+              <option value="">{scenes.length === 0 ? "no scenes" : "no current scenes"}</option>
+            )}
+            {listedScenes.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.state})</option>)}
           </select>
+          <label className="small" title="Superseded scenes are kept in the database">
+            <input type="checkbox" checked={showSuperseded}
+              onChange={(e) => toggleSuperseded(e.target.checked)} />
+            show superseded{!showSuperseded && hiddenCount > 0 ? ` (${hiddenCount})` : ""}
+          </label>
           {scene && (scene.state === "new" || scene.state === "failed") && (
             <button onClick={() => api.processScene(scene.id).catch((e) => setError(message(e)))}>
               Process
