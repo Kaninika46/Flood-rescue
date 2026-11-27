@@ -249,14 +249,17 @@ def test_text_limits(client) -> None:
     alert = client.post("/alerts", json={"priority_id": pr["id"]}).json()
     long = "x" * 201
     assert client.post(f"/alerts/{alert['id']}/cancel", json={"reason": long}).status_code == 422
-    r = client.post(f"/alerts/{alert['id']}/approve", json={"officer": "y" * 121})
+    r = client.post(f"/alerts/{alert['id']}/approve", json={"officer": "y" * 201})
     assert r.status_code == 422
     report = {"edge_id": "D_E_0", "report": "road_closed", "lon": 0.0005, "lat": 0.001}
     assert client.post("/field_reports", json={**report, "note": long}).status_code == 422
-    assert client.post("/field_reports", json={**report, "reporter": "z" * 121}).status_code == 422
+    assert client.post("/field_reports", json={**report, "reporter": long}).status_code == 422
     assert client.post("/field_reports", json={**report, "edge_id": "e" * 81}).status_code == 422
-    ok = {**report, "note": "n" * 200, "reporter": "r" * 120}
+    ok = {**report, "note": "n" * 200, "reporter": "r" * 200}
     assert client.post("/field_reports", json=ok).status_code == 201
+    assert client.post("/scenes", json={"name": "s" * 200, "s1_path": "/x"}).status_code == 400
+    ok = client.post(f"/alerts/{alert['id']}/approve", json={"officer": "o" * 200})
+    assert ok.status_code == 200 and ok.json()["approved_by"] == "o" * 200
     assert client.post("/scenes", json={"name": long, "s1_path": "/x"}).status_code == 422
     send = {"recipients": ["+1555555010" + str(i % 10) for i in range(21)]}
     assert client.post(f"/alerts/{alert['id']}/send", json=send).status_code == 422

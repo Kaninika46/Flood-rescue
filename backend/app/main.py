@@ -49,10 +49,10 @@ app.add_middleware(CORSMiddleware, allow_origins=list(get_settings().cors_origin
 # --------------------------------------------------------------------------- schemas
 
 
-# Input limits: free text is short (and fits its database column), positions are real lon/lat,
-# and the alert's river and shelter come from configs/priority.yaml, never from the request.
-TEXT_MAX = 200  # notes, reasons, scene names
-NAME_MAX = 120  # officer and reporter names (String(120) columns)
+# Input limits: free text is at most 200 characters (the database columns fit it), positions are
+# real lon/lat, and the alert's river and shelter come from configs/priority.yaml, never from the
+# request.
+TEXT_MAX = 200  # notes, reasons, scene, officer and reporter names
 
 Lon = Annotated[float, Field(ge=-180.0, le=180.0)]
 Lat = Annotated[float, Field(ge=-90.0, le=90.0)]
@@ -77,7 +77,7 @@ class AlertIn(BaseModel):
 
 
 class ApproveIn(BaseModel):
-    officer: str = Field(min_length=2, max_length=NAME_MAX)
+    officer: str = Field(min_length=2, max_length=TEXT_MAX)
 
 
 class CancelIn(BaseModel):
@@ -96,7 +96,7 @@ class FieldReportIn(BaseModel):
     lon: Lon | None = None
     lat: Lat | None = None
     note: str | None = Field(default=None, max_length=TEXT_MAX)
-    reporter: str | None = Field(default=None, max_length=NAME_MAX)
+    reporter: str | None = Field(default=None, max_length=TEXT_MAX)
 
 
 # --------------------------------------------------------------------------- endpoints

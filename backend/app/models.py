@@ -100,7 +100,7 @@ class Alert(Base):
     cap_xml: Mapped[str] = mapped_column(Text)
     sms: Mapped[str] = mapped_column(Text)
     state: Mapped[str] = mapped_column(String(20), default="draft")
-    approved_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(String(200), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     approved_role: Mapped[str | None] = mapped_column(String(20), nullable=True)  # token role
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -118,6 +118,6 @@ class FieldReport(Base):
     edge_id: Mapped[str] = mapped_column(String(80), index=True)
     report: Mapped[str] = mapped_column(String(30))  # road_open / road_closed / bridge_gone
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    reporter: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    reporter: Mapped[str | None] = mapped_column(String(200), nullable=True)
     geom: Mapped[Any] = mapped_column(Geometry("POINT", srid=4326), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

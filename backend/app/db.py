@@ -37,6 +37,9 @@ def init_db(engine: Engine | None = None) -> None:
         conn.execute(
             text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS approved_role VARCHAR(20)")
         )
+        # names may be up to 200 characters (API limit); widening a VARCHAR is instant
+        conn.execute(text("ALTER TABLE alerts ALTER COLUMN approved_by TYPE VARCHAR(200)"))
+        conn.execute(text("ALTER TABLE field_reports ALTER COLUMN reporter TYPE VARCHAR(200)"))
 
 
 def get_session() -> Iterator[Session]:
