@@ -34,6 +34,9 @@ def init_db(engine: Engine | None = None) -> None:
         conn.execute(
             text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ")
         )
+        conn.execute(
+            text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS approved_role VARCHAR(20)")
+        )
 
 
 def get_session() -> Iterator[Session]:

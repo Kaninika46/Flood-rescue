@@ -29,6 +29,10 @@ header h1 span { font-weight: 400; opacity: 0.8; }
 header .scene { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 header .muted { color: #c9d6e3; }
 header select { max-width: 22rem; }
+header .token { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+header .token input { width: 10rem; }
+header .token.ok { color: #b9f0c4; }
+header .token-problem { color: #ffd2c8; }
 header label.small { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; color: #c9d6e3; }
 .exercise {
   margin-left: auto; background: var(--orange); color: #111; font-weight: 700;

@@ -19,6 +19,12 @@ URL = os.environ.get("TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not URL, reason="TEST_DATABASE_URL not set")
 
 TEST_PHONE = "+15555550100"
+OFFICER = "test-officer-token"
+TEAM = "test-team-token"
+
+
+def bearer(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture()
@@ -31,6 +37,8 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[object]:
     monkeypatch.setenv("DATABASE_URL", URL)
     monkeypatch.setenv("JOB_MODE", "sync")
     monkeypatch.setenv("FLOOD_SKIP_INIT_DB", "1")
+    monkeypatch.setenv("OFFICER_TOKEN", OFFICER)
+    monkeypatch.setenv("TEAM_TOKEN", TEAM)
     from backend.app import services
     from backend.app.db import engine_for, init_db
     from backend.app.main import app
@@ -76,7 +84,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[object]:
     app.dependency_overrides[services.get_graph] = lambda: G
     monkeypatch.setattr(services, "load_test_recipients", lambda: {TEST_PHONE})
     monkeypatch.setattr("src.alerts.gateway.load_test_recipients", lambda: {TEST_PHONE})
-    with TestClient(app) as c:
+    with TestClient(app, headers=bearer(OFFICER)) as c:  # officer by default
         yield c
     app.dependency_overrides.clear()
 
@@ -169,3 +177,65 @@ def test_alert_cancel_keeps_record_with_reason(client) -> None:
     assert approve.status_code == 409
     again = client.post(f"/alerts/{alert['id']}/cancel", json={"reason": "again"})
     assert again.status_code == 409
+
+
+@pytest.fixture()
+def anon(client):
+    """Same app and database, no Authorization header."""
+    from fastapi.testclient import TestClient
+
+    from backend.app.main import app
+
+    return TestClient(app)
+
+
+def test_officer_actions_need_the_officer_token(client, anon) -> None:
+    pr = client.get("/priorities").json()["features"][0]["properties"]
+    alert = client.post("/alerts", json={"priority_id": pr["id"]}).json()
+    calls = [
+        ("/alerts", {"priority_id": pr["id"]}),
+        (f"/alerts/{alert['id']}/approve", {"officer": "Officer Sharma"}),
+        (f"/alerts/{alert['id']}/cancel", {"reason": "test"}),
+        (f"/alerts/{alert['id']}/send", {}),
+        ("/scenes", {"name": "x", "s1_path": "/dev/null"}),
+        ("/scenes/1/process", {}),
+    ]
+    for path, body in calls:
+        for headers in ({}, bearer("wrong"), bearer(TEAM)):
+            r = anon.post(path, json=body, headers=headers)
+            assert r.status_code == 401, (path, headers, r.status_code)
+            assert r.headers["www-authenticate"] == "Bearer"
+    # nothing changed: still a draft, reads stay open
+    assert anon.get("/alerts").json()[0]["state"] == "draft"
+
+
+def test_approval_records_the_role(client) -> None:
+    pr = client.get("/priorities").json()["features"][0]["properties"]
+    alert = client.post("/alerts", json={"priority_id": pr["id"]}).json()
+    assert alert["approved_role"] is None
+    ok = client.post(f"/alerts/{alert['id']}/approve", json={"officer": "Officer Sharma"}).json()
+    assert ok["approved_by"] == "Officer Sharma" and ok["approved_role"] == "officer"
+
+
+def test_field_reports_take_team_or_officer_token(client, anon) -> None:
+    body = {"edge_id": "D_E_0", "report": "road_closed", "lon": 0.0005, "lat": 0.001}
+    assert anon.post("/field_reports", json=body).status_code == 401
+    assert anon.post("/field_reports", json=body, headers=bearer("wrong")).status_code == 401
+    assert anon.post("/field_reports", json=body, headers=bearer(TEAM)).status_code == 201
+    assert anon.post("/field_reports", json=body, headers=bearer(OFFICER)).status_code == 201
+    # routes and reads need no token
+    route = {"vehicle": "truck", "start": [0.0, 0.0], "end": [0.002, 0.0]}
+    assert anon.post("/routes", json=route).status_code == 200
+
+
+def test_unset_officer_token_turns_officer_actions_off(client, anon, monkeypatch) -> None:
+    monkeypatch.delenv("OFFICER_TOKEN")
+    pr = anon.get("/priorities").json()["features"][0]["properties"]
+    r = anon.post("/alerts", json={"priority_id": pr["id"]}, headers=bearer(""))
+    assert r.status_code == 401 and "not set" in r.json()["detail"]
+
+
+def test_whoami(anon) -> None:
+    assert anon.get("/whoami").status_code == 401
+    assert anon.get("/whoami", headers=bearer(TEAM)).json() == {"role": "team"}
+    assert anon.get("/whoami", headers=bearer(OFFICER)).json() == {"role": "officer"}

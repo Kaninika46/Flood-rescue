@@ -29,6 +29,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       DATA_ROOT: /data
       CORS_ORIGINS: http://localhost:5173
+      OFFICER_TOKEN: ${OFFICER_TOKEN:-}   # secrets: from your shell, never written here
+      TEAM_TOKEN: ${TEAM_TOKEN:-}
     volumes: ["${DATA_ROOT:?set DATA_ROOT}:/data", "..:/app"]
     ports: ["8000:8000"]
     depends_on: {db: {condition: service_healthy}, redis: {condition: service_started}}

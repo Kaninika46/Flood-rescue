@@ -23,6 +23,13 @@ class MemoryBlobs implements BlobStore {
 /// A toy backend: two roads, two priorities, a route with one "verify" segment.
 class FakeServer {
   bool up = true;
+
+  /// When set, POST /field_reports needs `Authorization: Bearer <requiredToken>` (else 401).
+  String? requiredToken;
+
+  /// When set, POST /field_reports answers with this status (e.g. 429, 500).
+  int? reportStatus;
+  final List<String?> reportAuth = [];
   final List<Map<String, dynamic>> reports = [];
   String vehicleWithoutRoute = 'boat';
 
@@ -124,6 +131,11 @@ class FakeServer {
       });
     }
     if (path == '/field_reports' && req.method == 'POST') {
+      reportAuth.add(req.headers['authorization']);
+      if (requiredToken != null && req.headers['authorization'] != 'Bearer $requiredToken') {
+        return _json({'detail': 'team token required'}, 401);
+      }
+      if (reportStatus != null) return _json({'detail': 'HTTP $reportStatus'}, reportStatus!);
       final body = jsonDecode(req.body) as Map<String, dynamic>;
       if ((body['lat'] as num) > 30) {
         return _json({'detail': 'no road within 60 m of the report position'}, 404);

@@ -1,4 +1,5 @@
 import 'package:flood_rescuer/src/api.dart';
+import 'package:flood_rescuer/src/app_state.dart';
 import 'package:flood_rescuer/src/geo.dart';
 import 'package:flood_rescuer/src/models.dart';
 import 'package:flood_rescuer/src/report_queue.dart';
@@ -69,6 +70,59 @@ void main() {
       expect(far.state, ReportState.rejected);
       expect(far.message, contains('no road within'));
     });
+
+    test('reports carry the team token; a missing or wrong token keeps them queued', () async {
+      final server = FakeServer()..requiredToken = 'team-secret';
+      final q = ReportQueue(MemoryStore());
+      await q.add(report('1'));
+      await q.add(report('2'));
+
+      final noToken = Api('http://server:8000', client: server.client());
+      expect(await q.flush(noToken), 0);
+      expect(q.pending, 2); // not rejected: fixed in Settings, then sent
+      expect(q.items.last.message, contains('team token'));
+      expect(server.reportAuth, [null]); // stopped after the first 401
+
+      final wrong = Api('http://server:8000', token: 'nope', client: server.client());
+      expect(await q.flush(wrong), 0);
+      expect(q.pending, 2);
+
+      final right = Api('http://server:8000', token: 'team-secret', client: server.client());
+      expect(await q.flush(right), 2);
+      expect(q.pending, 0);
+      expect(server.reportAuth.last, 'Bearer team-secret');
+    });
+
+    for (final status in [429, 500, 503]) {
+      test('HTTP $status keeps reports queued for a later try', () async {
+        final server = FakeServer()..reportStatus = status;
+        final api = Api('http://server:8000', client: server.client());
+        final q = ReportQueue(MemoryStore());
+        await q.add(report('1'));
+        await q.add(report('2'));
+        expect(await q.flush(api), 0);
+        expect(q.pending, 2);
+        expect(q.items.every((r) => r.state == ReportState.queued), isTrue);
+        server.reportStatus = null;
+        expect(await q.flush(api), 2);
+      });
+    }
+
+    test('the token is sent with reports only, not with reads or routes', () async {
+      final server = FakeServer();
+      final api = Api('http://server:8000', token: 'team-secret', client: server.client());
+      await api.priorities();
+      await api.route(Vehicle.car, const LatLng(26.5, 87.2), const LatLng(26.5, 87.22));
+      expect(server.reportAuth, isEmpty);
+      await api.report(report('1'));
+      expect(server.reportAuth, ['Bearer team-secret']);
+    });
+  });
+
+  test('settings keep the team token', () {
+    const s = Settings(serverUrl: 'http://x:8000', team: 'Boat 2', teamToken: 't');
+    expect(Settings.fromJson(s.toJson()).teamToken, 't');
+    expect(Settings.fromJson({'serverUrl': 'http://x:8000'}).teamToken, ''); // older settings
   });
 
   test('nearest road within the distance limit', () {

@@ -146,13 +146,14 @@ def _record(a: Alert) -> AlertRecord:
                        approved_by=a.approved_by, approved_at=a.approved_at)
 
 
-def approve_alert(session: Session, alert_id: int, officer: str) -> Alert:
-    """draft -> approved, with the officer's name and time."""
+def approve_alert(session: Session, alert_id: int, officer: str, role: str) -> Alert:
+    """draft -> approved, with the officer's name, the token role and the time."""
     a = session.get(Alert, alert_id)
     if a is None:
         raise KeyError(alert_id)
     rec = approve(_record(a), officer)
     a.state, a.approved_by, a.approved_at = rec.state, rec.approved_by, rec.approved_at
+    a.approved_role = role
     session.commit()
     return a
 

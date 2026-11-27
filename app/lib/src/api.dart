@@ -7,11 +7,15 @@ import 'package:latlong2/latlong.dart';
 
 import 'models.dart';
 
-/// The server answered with an error (4xx/5xx): retrying the same request will not help.
+/// The server answered with an error (4xx/5xx).
 class ApiRejected implements Exception {
   ApiRejected(this.status, this.detail);
   final int status;
   final String detail;
+
+  /// Worth sending again later unchanged: a missing or wrong team token (fixed in Settings), the
+  /// rate limit, or a server error. Other answers (no road near the position, bad input) are final.
+  bool get retryLater => status == 401 || status == 429 || status >= 500;
   @override
   String toString() => detail;
 }
@@ -26,10 +30,13 @@ class ApiUnreachable implements Exception {
 
 /// Client for the FastAPI backend.
 class Api {
-  Api(this.baseUrl, {http.Client? client, this.timeout = const Duration(seconds: 12)})
+  Api(this.baseUrl, {this.token = '', http.Client? client, this.timeout = const Duration(seconds: 12)})
     : _client = client ?? http.Client();
 
   final String baseUrl;
+
+  /// Team token (TEAM_TOKEN on the server), sent with field reports only.
+  final String token;
   final Duration timeout;
   final http.Client _client;
 
@@ -61,8 +68,15 @@ class Api {
 
   Future<dynamic> _get(String path, [Map<String, String>? q]) => _send(() => _client.get(_u(path, q)));
 
-  Future<dynamic> _post(String path, Map<String, dynamic> body) => _send(
-    () => _client.post(_u(path), headers: {'content-type': 'application/json'}, body: jsonEncode(body)),
+  Future<dynamic> _post(String path, Map<String, dynamic> body, {bool auth = false}) => _send(
+    () => _client.post(
+      _u(path),
+      headers: {
+        'content-type': 'application/json',
+        if (auth && token.isNotEmpty) 'authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    ),
   );
 
   Future<bool> health() async => (await _get('/health'))['status'] == 'ok';
@@ -85,7 +99,7 @@ class Api {
 
   /// Sends one report; returns the edge id the server used.
   Future<String> report(QueuedReport r) async =>
-      ((await _post('/field_reports', r.toBody())) as Map<String, dynamic>)['edge_id'] as String;
+      ((await _post('/field_reports', r.toBody(), auth: true)) as Map<String, dynamic>)['edge_id'] as String;
 
   /// Downloads the offline map (MBTiles) to [file].
   Future<int> downloadTiles(File file) async {

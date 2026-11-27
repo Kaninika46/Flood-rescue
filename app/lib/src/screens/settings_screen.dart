@@ -14,6 +14,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _url;
   late final TextEditingController _team;
+  late final TextEditingController _token;
+  bool _showToken = false;
   late Vehicle _vehicle;
   String? _mapMessage;
   bool _downloading = false;
@@ -26,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final s = AppScope.of(context).settings;
     _url = TextEditingController(text: s.serverUrl);
     _team = TextEditingController(text: s.team);
+    _token = TextEditingController(text: s.teamToken);
     _vehicle = s.vehicle;
     _ready = true;
   }
@@ -34,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _url.dispose();
     _team.dispose();
+    _token.dispose();
     super.dispose();
   }
 
@@ -60,6 +64,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             decoration: const InputDecoration(labelText: 'Team name', border: OutlineInputBorder()),
           ),
           const SizedBox(height: 16),
+          TextField(
+            key: const Key('team-token'),
+            controller: _token,
+            obscureText: !_showToken,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+              labelText: 'Team token',
+              helperText: 'From the control room. Needed to send road reports.',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                tooltip: _showToken ? 'Hide token' : 'Show token',
+                icon: Icon(_showToken ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => _showToken = !_showToken),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           DropdownButtonFormField<Vehicle>(
             initialValue: _vehicle,
             decoration: const InputDecoration(labelText: 'Vehicle', border: OutlineInputBorder()),
@@ -75,7 +97,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           FilledButton(
             onPressed: () async {
               await state.saveSettings(
-                Settings(serverUrl: _url.text.trim(), team: _team.text.trim(), vehicle: _vehicle),
+                Settings(
+                  serverUrl: _url.text.trim(),
+                  team: _team.text.trim(),
+                  teamToken: _token.text.trim(),
+                  vehicle: _vehicle,
+                ),
               );
               if (context.mounted) Navigator.of(context).pop();
             },

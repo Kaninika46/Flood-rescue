@@ -22,6 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app import services
+from backend.app.auth import require_officer, require_team
 from backend.app.db import get_session, init_db
 from backend.app.models import Alert, FieldReport, FloodLayer, Priority, RoadStatus, Scene
 from backend.app.settings import get_settings
@@ -95,6 +96,12 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/whoami")
+def whoami(role: str = Depends(require_team)) -> dict[str, str]:
+    """Role of the bearer token (the dashboard checks the officer token with it)."""
+    return {"role": role}
+
+
 @app.get("/scenes")
 def list_scenes(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
     """All scenes, newest first."""
@@ -104,7 +111,8 @@ def list_scenes(session: Session = Depends(get_session)) -> list[dict[str, Any]]
 
 
 @app.post("/scenes", status_code=201)
-def create_scene(body: SceneIn, session: Session = Depends(get_session)) -> dict[str, Any]:
+def create_scene(body: SceneIn, session: Session = Depends(get_session),
+                 _role: str = Depends(require_officer)) -> dict[str, Any]:
     """Register a Sentinel-1 scene (the file must be under $DATA_ROOT)."""
     if not services.scene_path_ok(body.s1_path):
         raise HTTPException(400, "s1_path must be an existing file under $DATA_ROOT")
@@ -115,7 +123,8 @@ def create_scene(body: SceneIn, session: Session = Depends(get_session)) -> dict
 
 
 @app.post("/scenes/{scene_id}/process", status_code=202)
-def process_scene(scene_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+def process_scene(scene_id: int, session: Session = Depends(get_session),
+                  _role: str = Depends(require_officer)) -> dict[str, Any]:
     """Queue the event pipeline (prediction -> depth -> roads -> priority -> alert draft)."""
     from backend.app.jobs import enqueue_scene
 
@@ -216,7 +225,8 @@ def list_priorities(scene_id: int | None = None,
 
 def _alert_json(a: Alert) -> dict[str, Any]:
     return {"id": a.id, "identifier": a.identifier, "state": a.state, "sms": a.sms,
-            "approved_by": a.approved_by, "approved_at": a.approved_at, "sent_at": a.sent_at,
+            "approved_by": a.approved_by, "approved_role": a.approved_role,
+            "approved_at": a.approved_at, "sent_at": a.sent_at,
             "sent_count": a.sent_count, "priority_id": a.priority_id, "cap_xml": a.cap_xml,
             "cancel_reason": a.cancel_reason, "cancelled_at": a.cancelled_at}
 
@@ -228,7 +238,8 @@ def list_alerts(session: Session = Depends(get_session)) -> list[dict[str, Any]]
 
 
 @app.post("/alerts", status_code=201)
-def create_alert(body: AlertIn, session: Session = Depends(get_session)) -> dict[str, Any]:
+def create_alert(body: AlertIn, session: Session = Depends(get_session),
+                 _role: str = Depends(require_officer)) -> dict[str, Any]:
     """Draft a CAP alert for a ranked area."""
     try:
         return _alert_json(services.alert_from_priority(session, body.priority_id, body.river,
@@ -238,11 +249,11 @@ def create_alert(body: AlertIn, session: Session = Depends(get_session)) -> dict
 
 
 @app.post("/alerts/{alert_id}/approve")
-def approve_alert(alert_id: int, body: ApproveIn,
-                  session: Session = Depends(get_session)) -> dict[str, Any]:
-    """Officer approval (records approved_by and approved_at)."""
+def approve_alert(alert_id: int, body: ApproveIn, session: Session = Depends(get_session),
+                  role: str = Depends(require_officer)) -> dict[str, Any]:
+    """Officer approval (records approved_by, approved_role and approved_at)."""
     try:
-        return _alert_json(services.approve_alert(session, alert_id, body.officer))
+        return _alert_json(services.approve_alert(session, alert_id, body.officer, role))
     except KeyError as err:
         raise HTTPException(404, "alert not found") from err
     except ApprovalError as err:
@@ -250,8 +261,8 @@ def approve_alert(alert_id: int, body: ApproveIn,
 
 
 @app.post("/alerts/{alert_id}/cancel")
-def cancel_alert(alert_id: int, body: CancelIn,
-                 session: Session = Depends(get_session)) -> dict[str, Any]:
+def cancel_alert(alert_id: int, body: CancelIn, session: Session = Depends(get_session),
+                 _role: str = Depends(require_officer)) -> dict[str, Any]:
     """Cancel a draft or approved alert with a reason; the record is kept, never deleted."""
     try:
         return _alert_json(services.cancel_alert(session, alert_id, body.reason))
@@ -262,8 +273,8 @@ def cancel_alert(alert_id: int, body: CancelIn,
 
 
 @app.post("/alerts/{alert_id}/send")
-def send_alert(alert_id: int, body: SendIn,
-               session: Session = Depends(get_session)) -> dict[str, Any]:
+def send_alert(alert_id: int, body: SendIn, session: Session = Depends(get_session),
+               _role: str = Depends(require_officer)) -> dict[str, Any]:
     """Send an approved alert to registered test phones only."""
     try:
         return _alert_json(services.send_alert_row(session, alert_id, body.recipients,
@@ -296,7 +307,8 @@ def vehicles() -> dict[str, Any]:
 
 @app.post("/field_reports", status_code=201)
 def post_field_report(body: FieldReportIn, session: Session = Depends(get_session),
-                      G: nx.MultiDiGraph = Depends(services.get_graph)) -> dict[str, Any]:
+                      G: nx.MultiDiGraph = Depends(services.get_graph),
+                      _role: str = Depends(require_team)) -> dict[str, Any]:
     """Record a field report; the next route request uses it."""
     try:
         fr = services.add_field_report(session, G, body.edge_id, body.report, body.lon, body.lat,

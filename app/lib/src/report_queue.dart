@@ -17,9 +17,10 @@ abstract class BlobStore {
 
 /// Field reports are queued on the phone and sent when the server can be reached.
 ///
-/// Reports are sent oldest first. A network failure stops the flush and keeps the rest queued;
-/// a server rejection (for example no road near the position) marks that report "rejected" with
-/// the reason, so the rescuer sees it, and the flush goes on.
+/// Reports are sent oldest first. A network failure, a missing or wrong team token (401), the
+/// rate limit (429) or a server error (5xx) stops the flush and keeps the rest queued, so no report
+/// is lost; a final rejection (for example no road near the position) marks that report "rejected"
+/// with the reason, so the rescuer sees it, and the flush goes on.
 class ReportQueue {
   ReportQueue(this._store) {
     final raw = _store.getString(_key);
@@ -56,6 +57,14 @@ class ReportQueue {
             ..message = 'road $edge';
           sent++;
         } on ApiRejected catch (e) {
+          if (e.retryLater) {
+            r.message = e.status == 401
+                ? 'waiting: team token missing or wrong (Settings)'
+                : e.status == 429
+                ? 'waiting: server busy, will retry'
+                : 'waiting: server error, will retry';
+            break;
+          }
           r
             ..state = ReportState.rejected
             ..message = e.detail;

@@ -102,6 +102,7 @@ class Alert(Base):
     state: Mapped[str] = mapped_column(String(20), default="draft")
     approved_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_role: Mapped[str | None] = mapped_column(String(20), nullable=True)  # token role
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_count: Mapped[int] = mapped_column(Integer, default=0)  # numbers are never stored
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -40,6 +40,7 @@ export type Alert = {
   state: "draft" | "approved" | "sent" | "cancelled";
   sms: string;
   approved_by: string | null;
+  approved_role?: string | null;
   approved_at: string | null;
   sent_at: string | null;
   sent_count: number | null;

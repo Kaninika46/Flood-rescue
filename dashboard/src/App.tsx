@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { api, ApiError } from "./api";
+import { api, ApiError, hasOfficerToken } from "./api";
 import { bbox } from "./geo";
 import MapView, { type Mode } from "./MapView";
 import AlertPanel from "./panels/AlertPanel";
 import LayerPanel from "./panels/LayerPanel";
+import OfficerToken from "./panels/OfficerToken";
 import PriorityPanel from "./panels/PriorityPanel";
 import ReportPanel from "./panels/ReportPanel";
 import RoutePanel from "./panels/RoutePanel";
@@ -47,6 +48,17 @@ export default function App() {
   const reportCount = useRef(0);
 
   const [showSuperseded, setShowSuperseded] = useState(false);
+  const [unlocked, setUnlocked] = useState(hasOfficerToken());
+
+  /** Errors from officer actions: a 401 means the token is missing or wrong, so ask again. */
+  const fail = (e: unknown) => {
+    if (e instanceof ApiError && e.status === 401) {
+      setUnlocked(false);
+      setError("Officer token needed (or not accepted). Enter it at the top of the page.");
+    } else {
+      setError(message(e));
+    }
+  };
 
   const scene = scenes.find((s) => s.id === sceneId) ?? null;
   // superseded scenes stay in the database but are hidden unless asked for; the selected scene is
@@ -148,7 +160,7 @@ export default function App() {
       if (road) setSelected({ road: road.properties, at: selected.at });
       await computeRoute(vehicle, start, end); // a report changes the route
     } catch (e) {
-      setError(message(e));
+      fail(e);
     }
   };
 
@@ -159,7 +171,7 @@ export default function App() {
       setAlerts((cur) => [a, ...cur]);
       setTab("alerts");
     } catch (e) {
-      setError(message(e));
+      fail(e);
     } finally {
       setDrafting(null);
     }
@@ -170,14 +182,14 @@ export default function App() {
     try {
       replaceAlert(await api.approveAlert(id, officer));
     } catch (e) {
-      setError(message(e));
+      fail(e);
     }
   };
   const onSend = async (id: number) => {
     try {
       replaceAlert(await api.sendAlert(id));
     } catch (e) {
-      setError(message(e));
+      fail(e);
     }
   };
 
@@ -217,12 +229,13 @@ export default function App() {
             show superseded{!showSuperseded && hiddenCount > 0 ? ` (${hiddenCount})` : ""}
           </label>
           {scene && (scene.state === "new" || scene.state === "failed") && (
-            <button onClick={() => api.processScene(scene.id).catch((e) => setError(message(e)))}>
+            <button onClick={() => api.processScene(scene.id).catch(fail)}>
               Process
             </button>
           )}
           {total != null && <span className="muted">image to alert draft: {total.toFixed(1)} min</span>}
         </div>
+        <OfficerToken unlocked={unlocked} onChange={setUnlocked} />
         <div className="exercise" role="note">
           EXERCISE · student project · routes are advice · alerts go to test phones only
         </div>

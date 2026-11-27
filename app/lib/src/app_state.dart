@@ -13,15 +13,27 @@ import 'report_queue.dart';
 
 /// Team settings kept on the phone.
 class Settings {
-  const Settings({this.serverUrl = 'http://10.0.2.2:8000', this.team = '', this.vehicle = Vehicle.car});
+  const Settings({
+    this.serverUrl = 'http://10.0.2.2:8000',
+    this.team = '',
+    this.teamToken = '',
+    this.vehicle = Vehicle.car,
+  });
   final String serverUrl; // 10.0.2.2 = the laptop, seen from the Android emulator
   final String team;
+  final String teamToken; // TEAM_TOKEN from the control room; needed to send field reports
   final Vehicle vehicle;
 
-  Map<String, dynamic> toJson() => {'serverUrl': serverUrl, 'team': team, 'vehicle': vehicle.name};
+  Map<String, dynamic> toJson() => {
+    'serverUrl': serverUrl,
+    'team': team,
+    'teamToken': teamToken,
+    'vehicle': vehicle.name,
+  };
   static Settings fromJson(Map<String, dynamic> j) => Settings(
     serverUrl: j['serverUrl'] as String,
     team: j['team'] as String? ?? '',
+    teamToken: j['teamToken'] as String? ?? '',
     vehicle: Vehicle.values.byName(j['vehicle'] as String? ?? 'car'),
   );
 }
@@ -35,10 +47,10 @@ class AppState extends ChangeNotifier {
     required this.dataDir,
     this.showTiles = true,
     LocationSource? location,
-    Api Function(String baseUrl)? apiFactory,
+    Api Function(String baseUrl, String token)? apiFactory,
     this.syncEvery = const Duration(seconds: 30),
   }) : _location = location ?? NoLocation(),
-       _apiFactory = apiFactory ?? Api.new;
+       _apiFactory = apiFactory ?? ((url, token) => Api(url, token: token));
 
   final KeyValueStore store;
   final BlobStore blobs;
@@ -46,7 +58,7 @@ class AppState extends ChangeNotifier {
   final bool showTiles; // false in widget tests (no map tile downloads)
   final Duration syncEvery;
   final LocationSource _location;
-  final Api Function(String) _apiFactory;
+  final Api Function(String, String) _apiFactory;
 
   Settings settings = const Settings();
   late final ReportQueue queue = ReportQueue(store);
@@ -62,7 +74,7 @@ class AppState extends ChangeNotifier {
   StreamSubscription<LatLng>? _gps;
   Api? _api;
 
-  Api get api => _api ??= _apiFactory(settings.serverUrl);
+  Api get api => _api ??= _apiFactory(settings.serverUrl, settings.teamToken);
   File get tilesFile => File('${dataDir.path}/koshi.mbtiles');
   bool get hasOfflineMap => tilesFile.existsSync();
 

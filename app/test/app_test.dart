@@ -27,7 +27,7 @@ void main() {
       dataDir: Directory.systemTemp,
       showTiles: false,
       location: FixedLocation(),
-      apiFactory: (url) => Api(url, client: server.client()),
+      apiFactory: (url, token) => Api(url, token: token, client: server.client()),
       syncEvery: const Duration(hours: 1),
     );
   });

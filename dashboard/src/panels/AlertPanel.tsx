@@ -44,7 +44,10 @@ function AlertCard({ a, onApprove, onSend }: { a: Alert } & Omit<Props, "alerts"
         </form>
       )}
       {a.approved_by && (
-        <p className="muted">Approved by <b>{a.approved_by}</b> at {fmtTime(a.approved_at)}</p>
+        <p className="muted">
+          Approved by <b>{a.approved_by}</b>
+          {a.approved_role ? ` (${a.approved_role} token)` : ""} at {fmtTime(a.approved_at)}
+        </p>
       )}
       {a.state === "approved" && (
         <button disabled={busy} onClick={() => void run(() => onSend(a.id))}>

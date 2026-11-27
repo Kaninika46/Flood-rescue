@@ -11,8 +11,29 @@ reimplemented here.
 | `GET /roads/status` | road edges with status (GeoJSON), latest scene plus field reports |
 | `POST /routes` | `{vehicle, start: [lon, lat], end}` -> route GeoJSON with the advice text and "verify" segments |
 | `GET /priorities` | ranked areas (GeoJSON) |
-| `GET/POST /alerts`, `POST /alerts/{id}/approve`, `POST /alerts/{id}/send` | CAP draft -> officer approval -> test phones only |
-| `GET/POST /field_reports` | road open / closed / bridge gone; the next route request uses it |
+| `GET/POST /alerts`, `POST /alerts/{id}/approve`, `/cancel`, `/send` | CAP draft -> officer approval -> test phones only (officer token) |
+| `GET/POST /field_reports` | road open / closed / bridge gone; the next route request uses it (team or officer token) |
+
+## Tokens
+
+Actions that change things need a bearer token (`Authorization: Bearer <token>`); reads and
+`POST /routes` do not. Two secrets, from environment variables only (never commit them):
+
+| Variable | Allows |
+|---|---|
+| `OFFICER_TOKEN` | `POST /alerts`, `/alerts/{id}/approve`, `/cancel`, `/send`; `POST /scenes`, `/scenes/{id}/process`; field reports |
+| `TEAM_TOKEN` | `POST /field_reports` (the rescuer app) |
+
+A missing or wrong token gets 401. If a variable is not set, its actions are refused for everyone.
+Approvals record the role of the token (`approved_role`) next to the officer's name.
+`GET /whoami` returns the role of a token. Make a token with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(24))"
+```
+
+The dashboard asks for the officer token once per tab and keeps it in memory only; the rescuer
+app has a "Team token" field in Settings.
 
 Run:
 

@@ -43,7 +43,9 @@ The release APK is signed with the debug key (fine for your own test phones; do 
    `uvicorn backend.app.main:app --host 0.0.0.0 --port 8000`.
 2. Phone and laptop on the same Wi-Fi. In the app: **Settings → Server address**
    `http://<laptop IP>:8000` (the emulator reaches the laptop at `http://10.0.2.2:8000`, the default).
-3. Set the team name and vehicle.
+3. Set the team name, the **team token** (from the control room: the backend's `TEAM_TOKEN`) and
+   the vehicle. Road reports need the token. Without it, or with a wrong one, reports stay in the
+   queue as "waiting" and go out once the token is fixed; they are never thrown away.
 
 ## Offline map
 
