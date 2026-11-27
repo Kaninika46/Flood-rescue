@@ -35,6 +35,13 @@ python -c "import secrets; print(secrets.token_urlsafe(24))"
 The dashboard asks for the officer token once per tab and keeps it in memory only; the rescuer
 app has a "Team token" field in Settings.
 
+## Rate limits
+
+`POST /routes` and `POST /field_reports` are limited per client IP (sliding minute, in memory):
+`RATE_LIMIT_ROUTES` (default 30 per minute) and `RATE_LIMIT_REPORTS` (default 60). Over the limit
+the answer is 429 with `Retry-After`; the rescuer app keeps the report queued and tries again.
+Behind a Windows port-forward all phones share one address, so they share the limit.
+
 Run:
 
 ```bash

@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from backend.app import services
 from backend.app.auth import require_officer, require_team
 from backend.app.db import get_session, init_db
+from backend.app.ratelimit import rate_limited
 from backend.app.models import Alert, FieldReport, FloodLayer, Priority, RoadStatus, Scene
 from backend.app.settings import get_settings
 from src.alerts.approval import ApprovalError
@@ -207,7 +208,7 @@ def road_status(scene_id: int | None = None, bbox: str | None = None,
     return {"type": "FeatureCollection", "features": feats}
 
 
-@app.post("/routes")
+@app.post("/routes", dependencies=[Depends(rate_limited("routes"))])
 def request_route(body: RouteIn, session: Session = Depends(get_session),
                   G: nx.MultiDiGraph = Depends(services.get_graph)) -> dict[str, Any]:
     """Fastest safe route for a vehicle; always carries the advice text."""
@@ -315,7 +316,7 @@ def vehicles() -> dict[str, Any]:
     return {"vehicles": profiles, "advice": ADVICE}
 
 
-@app.post("/field_reports", status_code=201)
+@app.post("/field_reports", status_code=201, dependencies=[Depends(rate_limited("reports"))])
 def post_field_report(body: FieldReportIn, session: Session = Depends(get_session),
                       G: nx.MultiDiGraph = Depends(services.get_graph),
                       _role: str = Depends(require_team)) -> dict[str, Any]:

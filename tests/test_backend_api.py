@@ -82,6 +82,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[object]:
         )
         s.commit()
     app.dependency_overrides[services.get_graph] = lambda: G
+    from backend.app.ratelimit import reset_all
+
+    reset_all()
     monkeypatch.setattr(services, "load_test_recipients", lambda: {TEST_PHONE})
     monkeypatch.setattr("src.alerts.gateway.load_test_recipients", lambda: {TEST_PHONE})
     with TestClient(app, headers=bearer(OFFICER)) as c:  # officer by default
@@ -280,3 +283,19 @@ def test_alert_wording_comes_from_config(client) -> None:
     alert = client.post("/alerts", json={"priority_id": pr["id"]}).json()
     assert cfg["river"] in alert["cap_xml"] and cfg["shelter"] in alert["cap_xml"]
     assert cfg["area_note"] in alert["cap_xml"]  # "upper estimate", as in run_event
+
+
+def test_rate_limit_routes_and_reports(client, anon, monkeypatch) -> None:
+    monkeypatch.setenv("RATE_LIMIT_ROUTES", "3")
+    monkeypatch.setenv("RATE_LIMIT_REPORTS", "2")
+    route = {"vehicle": "truck", "start": [0.0, 0.0], "end": [0.002, 0.0]}
+    assert [client.post("/routes", json=route).status_code for _ in range(3)] == [200] * 3
+    r = client.post("/routes", json=route)
+    assert r.status_code == 429 and int(r.headers["retry-after"]) >= 1
+    report = {"edge_id": "D_E_0", "report": "road_open", "lon": 0.0005, "lat": 0.001}
+    assert [client.post("/field_reports", json=report).status_code for _ in range(2)] == [201] * 2
+    assert client.post("/field_reports", json=report).status_code == 429
+    # counted before the token check, so guessing tokens is slowed down too
+    assert anon.post("/field_reports", json=report, headers=bearer("guess")).status_code == 429
+    # other endpoints are not limited
+    assert client.get("/health").status_code == 200
