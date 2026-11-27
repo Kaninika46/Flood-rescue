@@ -4,14 +4,14 @@ Scene `S1_20240927.tif`, GPU: NVIDIA GeForce RTX 4060 Laptop GPU, 8.0 GB, comput
 
 | Step | Minutes |
 |---|---|
-| level1 | 2.58 |
+| level1 | 2.75 |
 | mask | 0.12 |
-| depth | 0.30 |
+| depth | 0.32 |
 | level2 | 0.00 |
-| roads | 1.24 |
-| priority | 0.21 |
+| roads | 1.21 |
+| priority | 0.19 |
 | alert | 0.00 |
-| **image to alert draft** | **4.46** |
+| **image to alert draft** | **4.59** |
 
 HAND and other terrain rasters are prepared before an event (they do not change between floods) and were passed with `--hand`; their preparation is not included in the time above.
 

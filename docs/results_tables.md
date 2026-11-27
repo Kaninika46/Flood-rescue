@@ -34,14 +34,14 @@ _No results yet._
 |---|---|
 | Scene | S1_20240927.tif |
 | GPU | NVIDIA GeForce RTX 4060 Laptop GPU, 8.0 GB, compute 8.9 |
-| Minutes: level1 | 2.58 |
+| Minutes: level1 | 2.75 |
 | Minutes: mask | 0.12 |
-| Minutes: depth | 0.30 |
+| Minutes: depth | 0.32 |
 | Minutes: level2 | 0.00 |
-| Minutes: roads | 1.24 |
-| Minutes: priority | 0.21 |
+| Minutes: roads | 1.21 |
+| Minutes: priority | 0.19 |
 | Minutes: alert | 0.00 |
-| Minutes: image to alert draft | 4.46 |
+| Minutes: image to alert draft | 4.59 |
 | Demo route time (car), min | 55.4 |
 | Demo route time (truck), min | 69.3 |
 | Demo route time (foot), min | 366.2 |

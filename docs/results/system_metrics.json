@@ -2,15 +2,15 @@
  "scene": "S1_20240927.tif",
  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU, 8.0 GB, compute 8.9",
  "minutes": {
-  "level1": 2.578,
-  "mask": 0.116,
-  "depth": 0.305,
+  "level1": 2.748,
+  "mask": 0.115,
+  "depth": 0.321,
   "level2": 0.0,
-  "roads": 1.241,
-  "priority": 0.212,
+  "roads": 1.207,
+  "priority": 0.191,
   "alert": 0.004
  },
- "total_minutes": 4.456,
+ "total_minutes": 4.586,
  "route_minutes": {
   "car": 55.42,
   "truck": 69.27,
